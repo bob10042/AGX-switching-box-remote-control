@@ -254,27 +254,33 @@ def page_power_path(pdf):
           "NEUTRAL BUS  (common return \u2014 not switched \u2014 to all loads)",
           C_NEUT, 12, 'center', 'top', True)
 
-    # Vertical neutral return bus (right of FORM 3 loads, clear of 1Φ load)
+    # Neutral is permanent (not switched) - always hard-wired to all loads
     ld_r = ldx + ldw  # 13.0
-    nr_x = 13.3  # neutral return x (clear of loads at 13.0 and 1Φ at 13.5)
+    nr_x = 13.3  # neutral return bus x
+
+    # Vertical neutral bus from bottom to top
     wire(ax, nr_x, ny, nr_x, pha_y, C_NEUT, LW_N)
     dot(ax, nr_x, ny, C_NEUT, 10)
-    label(ax, nr_x - 0.15, 4.75, "N RETURN", C_NEUT, 11,
+    label(ax, nr_x - 0.15, 4.75, "NEUTRAL", C_NEUT, 11,
           'right', 'center', True)
+    label(ax, nr_x - 0.15, 4.4, "(permanent", C_NEUT, 9,
+          'right', 'center')
+    label(ax, nr_x - 0.15, 4.15, "not switched)", C_NEUT, 9,
+          'right', 'center')
 
-    # Horizontal neutral stubs from each FORM 3 load to neutral return
+    # Permanent neutral connections from each FORM 3 load
     for ph, y, col in phases:
         wire(ax, ld_r, y, nr_x, y, C_NEUT, LW_N)
         dot(ax, ld_r, y, C_NEUT, 9)
         dot(ax, nr_x, y, C_NEUT, 9)
 
-    # 1-phase load neutral return (right side, down to neutral bus)
+    # 1-phase load permanent neutral (right side, down to bus)
     f1_nr_x = 16.1
     wire(ax, 16.0, sp_y, f1_nr_x, sp_y, C_NEUT, LW_N)
     wire(ax, f1_nr_x, sp_y, f1_nr_x, ny, C_NEUT, LW_N)
     dot(ax, 16.0, sp_y, C_NEUT, 9)
     dot(ax, f1_nr_x, ny, C_NEUT, 9)
-    label(ax, 16.1, 2.0, "N", C_NEUT, 13, 'center', 'center', True)
+    label(ax, f1_nr_x, 2.0, "N", C_NEUT, 13, 'center', 'center', True)
 
     # ─── INTERLOCK & WIRE COLOURS (text labels, no block) ───
     label(ax, 15.0, 9.5, "INTERLOCK", C_DKRED, 13, 'center', 'center', True)
@@ -438,7 +444,7 @@ def page_relay_drives(pdf):
           "Works even if ESP32 has crashed or firmware is hung",
           '#424242', 10, 'left', 'center')
     label(ax, 1.0, 0.8,
-          "See Page 5 for full mains input and 24V PSU wiring",
+          "See Page 6 for full mains input and 24V PSU wiring",
           '#E65100', 10, 'left', 'center', True)
 
     # ─── LEGEND ───
