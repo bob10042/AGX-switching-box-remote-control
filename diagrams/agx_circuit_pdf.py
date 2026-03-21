@@ -795,168 +795,146 @@ def page_mains_psu(pdf):
         "230VAC mains input  |  DIN-rail PSU  |  Hardware E-stop"
         "  |  Earth bonding")
 
-    # ─── IEC INLET ───
-    block(ax, 0.8, 6.0, 3.5, 3.5,
-          "IEC C14\nPANEL INLET", C_ORANGE, '#E65100', 15)
-    label(ax, 2.55, 8.5,
-          "Rear panel mount", '#E65100', 11, 'center', 'center', True)
-    label(ax, 2.55, 8.0,
-          "230VAC 50Hz input", '#424242', 11, 'center', 'center')
-    label(ax, 2.55, 7.5,
-          "With integral\nfuse holder (6A)", '#424242', 10, 'center', 'center')
-    label(ax, 2.55, 6.8,
-          "IEC C13 mains cable\nfrom UK 13A plug\n(fused 3A in plug)",
+    # Three blocks across the top, safety block at bottom.
+    # All wires routed through the 1.5-unit gaps between blocks.
+
+    # ─── BLOCK 1: MAINS INPUT ───
+    bm_x, bm_y, bm_w, bm_h = 0.5, 6.2, 4.5, 3.8
+    block(ax, bm_x, bm_y, bm_w, bm_h,
+          "MAINS INPUT", C_ORANGE, '#E65100', 15)
+    label(ax, bm_x + bm_w / 2, 9.2,
+          "IEC C14 panel-mount inlet", '#E65100', 11, 'center', 'center', True)
+    label(ax, bm_x + bm_w / 2, 8.7,
+          "230VAC 50Hz", '#424242', 11, 'center', 'center')
+    label(ax, bm_x + bm_w / 2, 8.2,
+          "Integral fuse holder (6A)", '#424242', 10, 'center', 'center')
+    label(ax, bm_x + bm_w / 2, 7.6,
+          "6A DIN-rail MCB (Type B)\nfor overcurrent protection\nand isolation",
+          '#424242', 10, 'center', 'center')
+    label(ax, bm_x + bm_w / 2, 6.7,
+          "IEC C13 mains cable\nfrom UK 13A plug (3A fuse)",
           C_LGREY, 9, 'center', 'center')
+    bm_r = bm_x + bm_w  # 5.0
 
-    # Mains wire outputs from inlet
-    inlet_r = 4.3
-    live_y, neut_y_m, earth_y = 8.5, 7.5, 6.5
-    dot(ax, inlet_r, live_y, '#8B4513', 9)
-    label(ax, inlet_r + 0.15, live_y, "L", '#8B4513', 11,
-          'left', 'center', True)
-    dot(ax, inlet_r, neut_y_m, C_DKBLUE, 9)
-    label(ax, inlet_r + 0.15, neut_y_m, "N", C_DKBLUE, 11,
-          'left', 'center', True)
-    dot(ax, inlet_r, earth_y, C_DKGREEN, 9)
-    label(ax, inlet_r + 0.15, earth_y, "E", C_DKGREEN, 11,
-          'left', 'center', True)
-
-    # ─── MCB ───
-    block(ax, 5.5, 7.5, 2.5, 2.0,
-          "DIN-RAIL MCB\n6A TYPE B", C_RED_BG, C_DKRED, 13)
-    label(ax, 6.75, 8.1,
-          "Overcurrent\nprotection", C_DKRED, 10, 'center', 'center')
-    label(ax, 6.75, 7.7,
-          "Isolates mains\nfor maintenance", C_LGREY, 9, 'center', 'center')
-
-    # Wire: L from inlet to MCB
-    wire(ax, inlet_r, live_y, 5.5, live_y, '#8B4513', LW_PW)
-    label(ax, (inlet_r + 5.5) / 2, live_y + 0.18,
-          "LIVE (brown)", '#8B4513', 10, 'center', 'bottom', True)
-
-    # ─── 24V DIN-RAIL PSU ───
-    block(ax, 9.0, 6.0, 3.5, 3.5,
+    # ─── BLOCK 2: 24V DIN-RAIL PSU ───
+    bp_x, bp_y, bp_w, bp_h = 6.5, 6.2, 4.3, 3.8
+    block(ax, bp_x, bp_y, bp_w, bp_h,
           "24V DIN-RAIL PSU", C_LTTEAL, C_TEAL, 15)
-    label(ax, 10.75, 8.6,
+    label(ax, bp_x + bp_w / 2, 9.2,
           "Mean Well HDR-100-24", C_TEAL, 12, 'center', 'center', True)
-    label(ax, 10.75, 8.1,
-          "Input: 85-264VAC", '#424242', 10, 'center', 'center')
-    label(ax, 10.75, 7.7,
-          "Output: 24VDC / 5A", C_TEAL, 11, 'center', 'center', True)
-    label(ax, 10.75, 7.2,
+    label(ax, bp_x + bp_w / 2, 8.7,
+          "Input: 85\u2013264VAC (universal)", '#424242', 10, 'center', 'center')
+    label(ax, bp_x + bp_w / 2, 8.25,
+          "Output: 24VDC / 5A", C_TEAL, 12, 'center', 'center', True)
+    label(ax, bp_x + bp_w / 2, 7.8,
           "120W continuous", '#424242', 10, 'center', 'center')
-    label(ax, 10.75, 6.7,
-          "DIN-rail mount\n(TS-35)", C_LGREY, 9, 'center', 'center')
+    label(ax, bp_x + bp_w / 2, 7.3,
+          "DIN-rail mount (TS-35)", C_LGREY, 10, 'center', 'center')
+    label(ax, bp_x + bp_w / 2, 6.8,
+          "Terminals: L, N, PE, +V, \u2212V", '#424242', 9, 'center', 'center',
+          False, True)
+    bp_r = bp_x + bp_w  # 10.8
 
-    psu_l = 9.0
-    psu_r = 12.5
+    # ─── BLOCK 3: E-STOP & OUTPUT RAILS ───
+    be_x, be_y, be_w, be_h = 12.3, 6.2, 3.7, 3.8
+    block(ax, be_x, be_y, be_w, be_h,
+          "E-STOP &\nOUTPUT RAILS", C_RED_BG, C_DKRED, 14)
+    label(ax, be_x + be_w / 2, 9.0,
+          "HW E-STOP", C_DKRED, 12, 'center', 'center', True)
+    label(ax, be_x + be_w / 2, 8.55,
+          "NC mushroom-head\npanel mount (red)", C_DKRED, 10,
+          'center', 'center')
+    label(ax, be_x + be_w / 2, 7.9,
+          "Physically cuts +24V\nto ALL coils", '#424242', 10,
+          'center', 'center')
+    label(ax, be_x + be_w / 2, 7.2,
+          "+24VDC RAIL", C_RAIL, 12, 'center', 'center', True)
+    label(ax, be_x + be_w / 2, 6.85,
+          "To interlock buses\n\u2192 contactor coils", '#424242', 9,
+          'center', 'center')
+    label(ax, be_x + be_w / 2, 6.35,
+          "0V RAIL (GND)", C_RAIL0, 12, 'center', 'center', True)
 
-    # Wire: MCB output to PSU L
-    wire(ax, 8.0, live_y, psu_l, live_y, '#8B4513', LW_PW)
-    label(ax, 8.5, live_y + 0.18,
-          "MCB out", '#8B4513', 9, 'center', 'bottom', True)
+    # ─── WIRES BETWEEN BLOCKS (all in the 1.5-unit gaps) ───
 
-    # Wire: N from inlet to PSU N (route below MCB)
-    wire(ax, inlet_r, neut_y_m, 5.2, neut_y_m, C_DKBLUE, LW_PW)
-    wire(ax, 5.2, neut_y_m, 5.2, 7.0, C_DKBLUE, LW_PW)
-    wire(ax, 5.2, 7.0, psu_l, 7.0, C_DKBLUE, LW_PW)
-    dot(ax, psu_l, 7.0, C_DKBLUE, 7)
-    label(ax, (5.2 + psu_l) / 2, 7.0 - 0.18,
-          "NEUTRAL (blue)", C_DKBLUE, 10, 'center', 'top', True)
+    # Mains → PSU: arrow in the gap
+    wire_y1 = 8.5
+    wire(ax, bm_r, wire_y1, bp_x, wire_y1, '#8B4513', LW_PW)
+    dot(ax, bm_r, wire_y1, '#8B4513', 8)
+    dot(ax, bp_x, wire_y1, '#8B4513', 8)
+    label(ax, (bm_r + bp_x) / 2, wire_y1 + 0.18,
+          "L + N + PE", '#8B4513', 10, 'center', 'bottom', True)
+    label(ax, (bm_r + bp_x) / 2, wire_y1 - 0.18,
+          "(via MCB for L)", C_LGREY, 8, 'center', 'top')
 
-    # ─── HARDWARE E-STOP ───
-    block(ax, 9.0, 3.0, 3.5, 2.2,
-          "HARDWARE E-STOP", C_RED_BG, C_DKRED, 14)
-    label(ax, 10.75, 4.4,
-          "NC mushroom-head\npushbutton", C_DKRED, 11, 'center', 'center', True)
-    label(ax, 10.75, 3.7,
-          "Panel mount\n(red, twist-release)", C_LGREY, 10, 'center', 'center')
-    label(ax, 10.75, 3.15,
-          "Physically cuts +24V", C_DKRED, 10, 'center', 'center', True)
+    # PSU → E-STOP: +24V output in the gap
+    wire_y2 = 8.5
+    wire(ax, bp_r, wire_y2, be_x, wire_y2, C_RAIL, LW_PW)
+    dot(ax, bp_r, wire_y2, C_RAIL, 8)
+    dot(ax, be_x, wire_y2, C_RAIL, 8)
+    label(ax, (bp_r + be_x) / 2, wire_y2 + 0.18,
+          "+V (24VDC)", C_RAIL, 10, 'center', 'bottom', True)
 
-    # Wire: PSU +V output down to E-STOP
-    wire(ax, 10.3, 6.0, 10.3, 5.2, C_RAIL, LW_PW)
-    dot(ax, 10.3, 6.0, C_RAIL, 8)
-    label(ax, 10.3 + 0.15, 5.6, "+V (24VDC)", C_RAIL, 10,
-          'left', 'center', True)
+    # PSU → 0V rail: second wire in the gap
+    wire_y3 = 7.0
+    wire(ax, bp_r, wire_y3, be_x, wire_y3, C_RAIL0, LW_PW)
+    dot(ax, bp_r, wire_y3, C_RAIL0, 8)
+    dot(ax, be_x, wire_y3, C_RAIL0, 8)
+    label(ax, (bp_r + be_x) / 2, wire_y3 + 0.18,
+          "\u2212V (0V)", C_RAIL0, 10, 'center', 'bottom', True)
 
-    # Wire: E-STOP output to +24V RAIL block
-    block(ax, 14.0, 3.5, 2.0, 1.5,
-          "+24VDC\nRAIL", C_RED_BG, C_RAIL, 14)
-    label(ax, 15.0, 3.7,
-          "To coil\nbuses", C_RAIL, 10, 'center', 'center')
-    wire(ax, 12.5, 4.1, 14.0, 4.1, C_RAIL, LW_PW)
-    label(ax, 13.25, 4.1 + 0.18,
-          "E-STOP out", C_DKRED, 9, 'center', 'bottom', True)
+    # ─── BLOCK 4: EARTH BONDING & SAFETY ───
+    bs_x, bs_y, bs_w, bs_h = 0.5, 0.5, 15.5, 5.0
+    block(ax, bs_x, bs_y, bs_w, bs_h,
+          "EARTH BONDING & SAFETY NOTES", '#E8F5E9', C_DKGREEN, 15)
 
-    # Wire: PSU 0V output to 0V RAIL block
-    block(ax, 14.0, 1.5, 2.0, 1.5,
-          "0V RAIL", C_LTBLUE, C_RAIL0, 14)
-    label(ax, 15.0, 1.7,
-          "GND shared\nwith ESP32", C_RAIL0, 10, 'center', 'center')
-    wire(ax, 11.2, 6.0, 11.2, 2.25, C_RAIL0, LW_PW)
-    wire(ax, 11.2, 2.25, 14.0, 2.25, C_RAIL0, LW_PW)
-    dot(ax, 11.2, 6.0, C_RAIL0, 8)
-    label(ax, 11.2 + 0.15, 4.5, "-V (0V)", C_RAIL0, 10,
-          'left', 'center', True)
-
-    # ─── EARTH BONDING ───
-    block(ax, 0.8, 1.0, 7.0, 4.5,
-          "EARTH BONDING & SAFETY", '#E8F5E9', C_DKGREEN, 14)
-
-    label(ax, 1.0, 4.7,
-          "EARTH PATH:", C_DKGREEN, 12, 'left', 'center', True)
-    label(ax, 1.0, 4.3,
-          "IEC inlet E (green/yellow) \u2192 enclosure bonding stud",
+    # Left column: earth bonding
+    label(ax, 0.8, 4.7,
+          "EARTH BONDING PATH:", C_DKGREEN, 13, 'left', 'center', True)
+    label(ax, 0.8, 4.2,
+          "IEC inlet E (green/yellow) \u2192 enclosure bonding stud \u2192 DIN rail \u2192 PSU PE terminal",
           '#424242', 10, 'left', 'center', False, True)
-    label(ax, 1.0, 3.9,
-          "\u2192 DIN rail \u2192 PSU PE terminal",
-          '#424242', 10, 'left', 'center', False, True)
+    label(ax, 0.8, 3.75,
+          "All metal parts of enclosure must be bonded to protective earth",
+          C_LGREY, 9, 'left', 'center')
 
-    label(ax, 1.0, 3.3,
-          "SAFETY NOTES:", C_DKRED, 12, 'left', 'center', True)
-    label(ax, 1.0, 2.9,
-          "\u2022 All mains wiring by a competent person",
-          '#424242', 10, 'left', 'center')
-    label(ax, 1.0, 2.55,
-          "\u2022 Earth bonding to metal enclosure is mandatory",
-          '#424242', 10, 'left', 'center')
-    label(ax, 1.0, 2.2,
-          "\u2022 Keep mains wiring separated from low-voltage control wiring",
-          '#424242', 10, 'left', 'center')
-    label(ax, 1.0, 1.85,
-          "\u2022 IEC inlet fuse holder: fit 6A anti-surge fuse (spare in lid)",
-          '#424242', 10, 'left', 'center')
-    label(ax, 1.0, 1.5,
-          "\u2022 Test earth continuity before first power-on",
-          '#424242', 10, 'left', 'center')
-    label(ax, 1.0, 1.15,
-          "\u2022 Label enclosure: 'CAUTION \u2014 230VAC INSIDE'",
-          C_DKRED, 10, 'left', 'center', True)
+    # Left column: safety notes
+    label(ax, 0.8, 3.1,
+          "SAFETY REQUIREMENTS:", C_DKRED, 13, 'left', 'center', True)
+    notes = [
+        "All mains wiring must be performed by a competent person",
+        "Earth bonding to metal enclosure and DIN rail is mandatory",
+        "Keep mains wiring physically separated from low-voltage control wiring",
+        "IEC inlet fuse holder: fit 6A anti-surge fuse (keep spare in lid)",
+        "Test earth continuity before first power-on",
+        "Label enclosure: 'CAUTION \u2014 230VAC INSIDE'",
+    ]
+    for i, note in enumerate(notes):
+        col = C_DKRED if i == 5 else '#424242'
+        bld = i == 5
+        label(ax, 0.8, 2.65 - i * 0.35, f"\u2022 {note}",
+              col, 10, 'left', 'center', bld)
 
-    # Wire: E from inlet to earth bonding block
-    wire(ax, inlet_r, earth_y, 4.3, earth_y, C_DKGREEN, LW_PW)
-    wire(ax, 4.3, earth_y, 4.3, 5.5, C_DKGREEN, LW_PW)
-    dot(ax, 4.3, 5.5, C_DKGREEN, 8)
-    label(ax, 4.3, 5.65, "EARTH (green/yellow)", C_DKGREEN, 10,
-          'center', 'bottom', True)
-
-    # ─── MAINS WIRE COLOUR KEY ───
-    label(ax, 14.0, 9.5,
-          "MAINS WIRE\nCOLOURS (UK)", '#424242', 12, 'left', 'center', True)
+    # Right column: wire colours and power chain
+    label(ax, 9.5, 4.7,
+          "MAINS WIRE COLOURS (UK):", '#424242', 13, 'left', 'center', True)
     for i, (lbl, c) in enumerate([
         ("Live = BROWN", '#8B4513'),
         ("Neutral = BLUE", C_DKBLUE),
         ("Earth = GREEN/YELLOW", C_DKGREEN)]):
-        label(ax, 14.0, 8.9 - i * 0.4, lbl, c, 11, 'left', 'center', True)
+        label(ax, 9.5, 4.25 - i * 0.35, lbl, c, 11, 'left', 'center', True)
 
-    # ─── POWER CHAIN SUMMARY ───
-    label(ax, 14.0, 7.5,
-          "POWER CHAIN:", '#424242', 12, 'left', 'center', True)
-    label(ax, 14.0, 7.0,
-          "230VAC mains\n\u2193\nIEC C14 inlet\n\u2193\n6A MCB\n\u2193\n24V PSU"
-          "\n\u2193\nE-STOP (NC)\n\u2193\n+24VDC RAIL",
-          '#424242', 9, 'left', 'top', False, True)
+    label(ax, 9.5, 3.1,
+          "POWER CHAIN:", '#424242', 13, 'left', 'center', True)
+    label(ax, 9.5, 2.6,
+          "230VAC mains \u2192 IEC C14 inlet \u2192 6A MCB \u2192 24V PSU",
+          '#424242', 10, 'left', 'center', False, True)
+    label(ax, 9.5, 2.2,
+          "\u2192 HW E-STOP (NC) \u2192 +24VDC RAIL \u2192 interlock buses",
+          C_DKRED, 10, 'left', 'center', True, True)
+    label(ax, 9.5, 1.8,
+          "0V from PSU \u2192 0V RAIL (shared GND with ESP32)",
+          C_RAIL0, 10, 'left', 'center', True, True)
 
     pdf.savefig(fig, bbox_inches='tight')
     plt.close(fig)
