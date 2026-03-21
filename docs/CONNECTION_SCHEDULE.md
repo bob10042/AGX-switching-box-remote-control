@@ -81,9 +81,13 @@ The K1/KSP coil bus is fed from +24V via the K3A, K3B, and K3C NC auxiliary cont
 
 ---
 
-## 6. Feedback Optocouplers (24V Side) — Cable: 0.5mm² flex
+## 6. Feedback Optocouplers (24V Side — LED Bias) — Cable: 0.5mm² flex
 
-Each PC817 optocoupler LED is wired: +24V → 4.7kΩ → LED anode → LED cathode → AUX NO contact → 0V
+The AUX NO contact switches the LED forward bias. When the contactor closes, the AUX contact closes, completing the circuit and forward-biasing the opto LED:
+
+`+24V → 4.7kΩ → Pin 1 (Anode) → [internal LED] → Pin 2 (Cathode) → AUX NO → 0V`
+
+AUX closed = LED biased ON. AUX open = no bias = LED OFF.
 
 | Wire | From | To | Colour | Notes |
 |------|------|----|--------|-------|
@@ -110,9 +114,15 @@ Each PC817 optocoupler LED is wired: +24V → 4.7kΩ → LED anode → LED catho
 
 ---
 
-## 7. Feedback Optocouplers (3.3V Side) — Cable: 0.5mm² flex
+## 7. Feedback Optocouplers (3.3V Side — GPIO Reads Output) — Cable: 0.5mm² flex
 
-Each PC817 phototransistor output: 3.3V → 10kΩ pull-up → collector → ESP32 GPIO, emitter → GND
+The ESP32 GPIO is a passive INPUT — it reads the phototransistor output, it does not drive anything:
+
+`3.3V → 10kΩ pull-up → Pin 4 (Collector) → ESP32 GPIO (INPUT)`
+`Pin 3 (Emitter) → GND`
+
+LED ON → phototransistor conducts → Pin 4 pulled to ~0V → GPIO reads LOW (contactor closed)
+LED OFF → phototransistor off → pull-up pulls Pin 4 to 3.3V → GPIO reads HIGH (contactor open)
 
 | Wire | From | To | Colour | Notes |
 |------|------|----|--------|-------|
@@ -271,9 +281,11 @@ Each contactor gets one Schneider LADN11 (1NO + 1NC) auxiliary block:
 
 ## PC817 Pin Assignment (all 5 identical)
 
-| Pin | Function | Connection |
-|-----|----------|------------|
-| 1 | Anode (+) | From 4.7kΩ resistor (from +24V) |
-| 2 | Cathode (−) | To contactor AUX NO contact |
-| 3 | Emitter | To 0V / ESP32 GND |
-| 4 | Collector | To 10kΩ pull-up (to 3.3V) + ESP32 GPIO |
+| Pin | Function | Connection | Role |
+|-----|----------|------------|------|
+| 1 | Anode (+) | From 4.7kΩ resistor (from +24V) | LED input — forward bias supply |
+| 2 | Cathode (−) | To contactor AUX NO contact → 0V | LED return — AUX switches this path |
+| 3 | Emitter | To 0V / ESP32 GND | Phototransistor return |
+| 4 | Collector | To 10kΩ pull-up (to 3.3V) + ESP32 GPIO | Output — GPIO reads this (passive INPUT) |
+
+**How it works:** The AUX NO contact on the 24V side (Pin 2) switches the LED forward bias ON/OFF. The ESP32 GPIO on the 3.3V side (Pin 4) passively reads the resulting phototransistor state. The GPIO does not drive anything — it is an input only.

@@ -500,51 +500,60 @@ def page_feedback(pdf):
     block(ax, ox, oy, ow, oh,
           "5\u00d7 PC817 OPTOCOUPLERS  (4-pin DIP)", C_ORANGE, '#E65100', 14)
 
-    # Pin connections - well spaced
+    # ── 24V SIDE: AUX contact switches the LED forward bias ──
     label(ax, ox + 0.3, 8.0,
-          "PC817 PIN CONNECTIONS:", '#E65100', 13, 'left', 'center', True)
+          "24V SIDE \u2014 AUX CONTACT SWITCHES LED BIAS:",
+          '#E65100', 13, 'left', 'center', True)
 
-    label(ax, ox + 0.3, 7.4,
-          "Pin 1 (Anode)     \u2190 +24V via 4.7k\u03A9",
+    label(ax, ox + 0.3, 7.5,
+          "+24V \u2192 4.7k\u03A9 \u2192 Pin 1 (Anode) \u2192 [LED] \u2192 Pin 2 (Cathode)",
           '#424242', 12, 'left', 'center', False, True)
-    label(ax, ox + 0.3, 6.85,
-          "Pin 2 (Cathode)   \u2192 AUX NO contact \u2192 0V",
+    label(ax, ox + 0.3, 7.05,
+          "Pin 2 \u2192 AUX NO contact \u2192 0V",
           '#424242', 12, 'left', 'center', False, True)
-    label(ax, ox + 0.3, 6.3,
-          "Pin 3 (Emitter)   \u2192 ESP32 GND / 0V",
-          '#424242', 12, 'left', 'center', False, True)
-    label(ax, ox + 0.3, 5.75,
-          "Pin 4 (Collector) \u2192 10k\u03A9 to 3.3V + ESP32 GPIO",
-          '#424242', 12, 'left', 'center', False, True)
+    label(ax, ox + 0.3, 6.6,
+          "AUX CLOSED = circuit complete = LED forward biased ON",
+          C_DKGREEN, 11, 'left', 'center', True)
+    label(ax, ox + 0.3, 6.2,
+          "AUX OPEN   = circuit broken  = LED has no bias   OFF",
+          C_DKRED, 11, 'left', 'center', True)
 
-    # Logic section
+    # ── 3.3V SIDE: ESP32 GPIO passively reads the output ──
+    label(ax, ox + 0.3, 5.5,
+          "3.3V SIDE \u2014 ESP32 GPIO READS OUTPUT (passive):",
+          '#E65100', 13, 'left', 'center', True)
+
     label(ax, ox + 0.3, 5.0,
-          "OUTPUT LOGIC:", '#E65100', 13, 'left', 'center', True)
-    label(ax, ox + 0.3, 4.5,
-          "AUX CLOSED \u2192 LED on \u2192 Pin4 LOW  \u2192 GPIO LOW",
+          "3.3V \u2192 10k\u03A9 pull-up \u2192 Pin 4 (Collector) \u2192 ESP32 GPIO",
+          '#424242', 12, 'left', 'center', False, True)
+    label(ax, ox + 0.3, 4.55,
+          "Pin 3 (Emitter) \u2192 GND (shared 0V)",
+          '#424242', 12, 'left', 'center', False, True)
+    label(ax, ox + 0.3, 4.1,
+          "LED ON  \u2192 phototransistor conducts \u2192 Pin4 \u2248 0V \u2192 GPIO LOW",
           C_DKGREEN, 11, 'left', 'center', True, True)
-    label(ax, ox + 0.3, 4.0,
-          "AUX OPEN   \u2192 LED off \u2192 Pin4 HIGH \u2192 GPIO HIGH",
+    label(ax, ox + 0.3, 3.7,
+          "LED OFF \u2192 phototransistor off \u2192 pull-up \u2192 Pin4 = 3.3V \u2192 GPIO HIGH",
           C_DKRED, 11, 'left', 'center', True, True)
-    label(ax, ox + 0.3, 3.5,
-          "Firmware: 5 reads, majority vote (3+ agree)",
+    label(ax, ox + 0.3, 3.3,
+          "GPIO is INPUT only \u2014 does not drive anything",
           C_LGREY, 10, 'left', 'center')
 
-    # Per-opto connection table
-    label(ax, ox + 0.3, 2.8,
-          "CONNECTIONS (all 5 identical circuit):",
-          '#E65100', 12, 'left', 'center', True)
+    # Per-opto connection table (keep inside block, bottom is y=1.8)
+    label(ax, ox + 0.3, 2.85,
+          "ALL 5 IDENTICAL \u2014 CONNECTIONS:",
+          '#E65100', 11, 'left', 'center', True)
     opto_map = [
-        ("PC817-1", "K3A AUX(NO)", "GPIO32"),
-        ("PC817-2", "K3B AUX(NO)", "GPIO33"),
-        ("PC817-3", "K3C AUX(NO)", "GPIO34"),
-        ("PC817-4", "K1  AUX(NO)", "GPIO36"),
-        ("PC817-5", "KSP AUX(NO)", "GPIO39"),
+        ("1: K3A AUX(NO) \u2192 GPIO32"),
+        ("2: K3B AUX(NO) \u2192 GPIO33"),
+        ("3: K3C AUX(NO) \u2192 GPIO34"),
+        ("4: K1  AUX(NO) \u2192 GPIO36"),
+        ("5: KSP AUX(NO) \u2192 GPIO39"),
     ]
-    for i, (opto, aux, gpio) in enumerate(opto_map):
-        label(ax, ox + 0.3, 2.4 - i * 0.3,
-              f"{opto}:  Pin2 \u2192 {aux}    Pin4 \u2192 {gpio}",
-              '#424242', 10, 'left', 'center', False, True)
+    for i, txt in enumerate(opto_map):
+        label(ax, ox + 0.3, 2.55 - i * 0.18,
+              f"PC817-{txt}",
+              '#424242', 9, 'left', 'center', False, True)
 
     opl = ox       # 5.5
     opr = ox + ow  # 11.0
