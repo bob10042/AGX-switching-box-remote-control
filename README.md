@@ -37,7 +37,7 @@ Four independent layers of protection prevent dangerous states:
 ├── docs/
 │   └── OPERATION_MANUAL.md            ← Detailed operation manual
 └── diagrams/
-    ├── AGX_Test_Box_Circuit.pdf       ← Circuit block diagrams (4 pages)
+    ├── AGX_Test_Box_Circuit.pdf       ← Circuit block diagrams (5 pages, A3)
     └── agx_circuit_pdf.py             ← Python script to regenerate diagrams
 ```
 
@@ -70,7 +70,9 @@ See the [Operation Manual](docs/OPERATION_MANUAL.md) for full wiring details. Ke
 | GPIO35 | E-stop | NO pushbutton to GND |
 | GPIO18/19/21 | LEDs | Green/Blue/Red via 330R |
 
-**Supply rails:** +24VDC from DIN-rail PSU to ULN2003 COM. 0V shared with ESP32 GND.
+**Mains input:** 230VAC via IEC C14 panel inlet → 6A DIN-rail MCB → 24V PSU (Mean Well HDR-100-24).
+
+**Supply rails:** PSU +V → HW E-stop (NC) → +24VDC rail → ULN2003 COM. PSU −V → 0V rail, shared with ESP32 GND.
 
 ### 3. Control via Serial
 
@@ -92,6 +94,7 @@ Open a serial terminal at **115200 baud** and send single-character commands:
 - **[Operation Manual](docs/OPERATION_MANUAL.md)** - Comprehensive guide covering:
   - All operating modes (Phase A, B, C, FORM 3, FORM 1, OFF)
   - Hardware description (ESP32, ULN2003A 5-channel, 5x contactors, 5x optocouplers)
+  - Mains input wiring (IEC C14 inlet, MCB, PSU, earth bonding)
   - Complete wiring tables and connection diagrams
   - Hardware interlock system (NC auxiliary contacts, two buses)
   - Feedback and state verification
@@ -107,12 +110,22 @@ Open a serial terminal at **115200 baud** and send single-character commands:
 
 ## Wire Colours
 
+**Power path (AGX to loads):**
+
 | Wire | Colour | Notes |
 |------|--------|-------|
 | Phase A | **Red** | 40A / 125A rated |
 | Phase B | **Brown** | 40A / 125A rated |
 | Phase C | **Grey** | 40A / 125A rated |
 | Neutral | **Black** (broader) | Common return, not switched |
+
+**Mains input (UK standard):**
+
+| Wire | Colour | Notes |
+|------|--------|-------|
+| Live | **Brown** | IEC inlet L → MCB → PSU L |
+| Neutral | **Blue** | IEC inlet N → PSU N |
+| Earth | **Green/Yellow** | IEC inlet E → enclosure bond → DIN rail → PSU PE |
 
 ## Bill of Materials (Summary)
 
@@ -125,10 +138,16 @@ Open a serial terminal at **115200 baud** and send single-character commands:
 | ESP32 DevKit V1 | ESP32-WROOM-32 | 1 | ~£10 |
 | ULN2003A Darlington driver | TI ULN2003AN | 1 | ~£0.50 |
 | PC817 optocoupler | Sharp PC817X | 5 | ~£0.30 each |
+| 4.7kΩ resistor | Opto LED current limit | 5 | ~£0.05 each |
+| 10kΩ resistor | Pull-up (feedback + E-stop) | 6 | ~£0.05 each |
+| 330Ω resistor + LED | Status indicators (G/B/R) | 3 | ~£0.25 each |
 | 24V DIN-rail PSU | Mean Well HDR-100-24 | 1 | ~£35 |
-| IEC C14 panel inlet | Mains input connector | 1 | ~£5 |
-| DIN-rail MCB 6A type B | Mains protection | 1 | ~£8 |
-| IEC C13 mains cable | Mains lead (UK plug) | 1 | ~£5 |
+| IEC C14 panel inlet | Mains input (with fuse holder) | 1 | ~£5 |
+| DIN-rail MCB 6A type B | Mains overcurrent protection | 1 | ~£8 |
+| IEC C13 mains cable | Mains lead (UK 13A plug, 3A fuse) | 1 | ~£5 |
+| NC mushroom-head E-stop | HW E-stop in +24V line | 1 | ~£20 |
+| NO pushbutton | SW E-stop to ESP32 GPIO35 | 1 | ~£3 |
+| Enclosure IP65 | DIN-rail housing | 1 | ~£80 |
 | **Total estimate** | | | **~£670 - £1,120** |
 
 UK suppliers: RS Components, Farnell, Mouser, Amazon UK, Screwfix/CEF.

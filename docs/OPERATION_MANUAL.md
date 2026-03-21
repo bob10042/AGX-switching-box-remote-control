@@ -580,23 +580,27 @@ Every mode change follows a strict **break-before-make** sequence:
 
 ### First Power-Up (No Load Connected)
 
-1. **Verify wiring** against this document and the circuit diagrams
-2. **Check supply rails**: +24V present at ULN2003 COM pin, 0V at GND
-3. **Connect ESP32** to laptop via USB
-4. **Open serial terminal** at 115200 baud
-5. **Verify startup banner** appears (Rev 2.0, individual phase selection)
-6. **Send `S`** - check status shows all drives OFF, all 5 feedbacks OPEN
-7. **Test E-stop**: press the NO pushbutton, verify `ESTOP` message
-8. **Send `0`** to clear E-stop state
-9. **Send `T`** to run self-test - this will:
-   - Verify all feedback shows open
-   - Switch to Phase A, verify, switch to OFF
-   - Switch to Phase B, verify, switch to OFF
-   - Switch to Phase C, verify, switch to OFF
-   - Switch to FORM 3, verify, switch to OFF
-   - Switch to FORM 1, verify, switch to OFF
-   - Report PASS/FAIL
-10. **If self-test passes**: system is ready for use with loads
+1. **Verify ALL wiring** against this document and the circuit diagrams (Pages 1-5)
+2. **Check earth continuity**: meter between mains earth pin and enclosure body (< 0.1Ω)
+3. **Connect mains**: plug IEC C13 cable into IEC C14 inlet, switch on MCB
+4. **Check supply rails**: +24V present at ULN2003 COM pin, 0V at GND
+5. **Connect ESP32** to laptop via USB
+6. **Open serial terminal** at 115200 baud
+7. **Verify startup banner** appears (Rev 2.0, individual phase selection)
+8. **Send `S`** - check status shows all drives OFF, all 5 feedbacks OPEN
+9. **Test HW E-stop**: press the mushroom-head button, verify +24V drops to 0V at ULN2003 COM
+10. **Release HW E-stop** (twist to release)
+11. **Test SW E-stop**: press the NO pushbutton, verify `ESTOP` message on serial
+12. **Send `0`** to clear E-stop state
+13. **Send `T`** to run self-test - this will:
+    - Verify all feedback shows open
+    - Switch to Phase A, verify, switch to OFF
+    - Switch to Phase B, verify, switch to OFF
+    - Switch to Phase C, verify, switch to OFF
+    - Switch to FORM 3, verify, switch to OFF
+    - Switch to FORM 1, verify, switch to OFF
+    - Report PASS/FAIL
+14. **If self-test passes**: system is ready for use with loads
 
 ---
 
@@ -629,18 +633,24 @@ Every mode change follows a strict **break-before-make** sequence:
 
 | Parameter | Value |
 |-----------|-------|
+| Mains input | 230VAC 50Hz via IEC C14 inlet |
+| Mains protection | 6A DIN-rail MCB type B |
+| 24V PSU | Mean Well HDR-100-24 (24VDC, 5A, 120W) |
 | Phase A/B/C current rating | 40A per phase |
 | FORM 3 current rating | 40A per phase (all three) |
 | FORM 1 current rating | 125A combined |
 | Control interface | USB serial, 115200 baud |
-| Controller | ESP32 DevKit V1 |
+| Controller | ESP32 DevKit V1 (USB powered) |
 | Coil driver | ULN2003A (5 of 7 channels used) |
 | Feedback | 5x PC817 optocoupler |
-| Supply voltage | +24VDC (contactor coils) |
-| Logic voltage | 3.3V (ESP32) |
+| Supply voltage | +24VDC (contactor coils, from PSU via E-stop) |
+| Logic voltage | 3.3V (ESP32 on-board regulator) |
 | Switching time | ~300ms typical |
 | Safety layers | 4 (software + hardware interlock + mechanical + E-stop) |
 | Phase A wire colour | RED |
 | Phase B wire colour | BROWN |
 | Phase C wire colour | GREY |
 | Neutral wire colour | BLACK |
+| Mains live wire colour | BROWN |
+| Mains neutral wire colour | BLUE |
+| Mains earth wire colour | GREEN/YELLOW |
