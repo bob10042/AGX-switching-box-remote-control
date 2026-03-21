@@ -184,25 +184,25 @@ def page_power_path(pdf):
           C_DKBLUE, 16, 'center', 'center', True)
     label(ax, 8.5, 9.85,
           "Select individually: 'A'  'B'  'C'   |   All three: '3'",
-          C_DKBLUE, 11, 'center', 'center', False, True)
+          C_DKBLUE, 12, 'center', 'center', False, True)
 
-    k3x, k3w, k3h = 6.0, 2.8, 1.0
-    ldx, ldw, ldh = 11.0, 2.8, 1.0
+    k3x, k3w, k3h = 6.0, 2.8, 1.1
+    ldx, ldw, ldh = 10.5, 2.5, 1.1
 
     for ph, y, col in phases:
         by = y - k3h / 2
-        block(ax, k3x, by, k3w, k3h, f"K3{ph}  (40A NO)", C_LTBLUE, C_BLUE, 13)
-        block(ax, ldx, by, ldw, ldh, f"Load {ph}  (40A)", C_PURPLE, '#7B1FA2', 13)
+        block(ax, k3x, by, k3w, k3h, f"K3{ph}  (40A NO)", C_LTBLUE, C_BLUE, 14)
+        block(ax, ldx, by, ldw, ldh, f"Load {ph}  (40A)", C_PURPLE, '#7B1FA2', 14)
         # AGX -> K3x
         wire(ax, agx_r, y, k3x, y, col, LW_PW)
         # K3x -> Load
         wire(ax, k3x + k3w, y, ldx, y, col, LW_PW)
         # Phase label
         mx = (agx_r + k3x) / 2
-        label(ax, mx, y + 0.2, f"Phase {ph}", col, 11, 'center', 'bottom', True)
+        label(ax, mx, y + 0.2, f"Phase {ph}", col, 12, 'center', 'bottom', True)
         # Command label
         label(ax, k3x + k3w / 2, by + 0.08,
-              f"Cmd: '{ph}'", C_DKBLUE, 10, 'center', 'bottom', False, True)
+              f"Cmd: '{ph}'", C_DKBLUE, 11, 'center', 'bottom', False, True)
 
     # ─── FORM 1: COMMONED (lower section) ───
     label(ax, 8.5, 4.8,
@@ -225,9 +225,9 @@ def page_power_path(pdf):
     # K1 combine block
     block(ax, k1_x, k1_y, k1_w, k1_h, "K1 COMBINE", C_RED_BG, C_DKRED, 14)
     label(ax, k1_x + k1_w / 2, 2.8,
-          "K1A+K1B+K1C\n(3\u00d7 40A NO)", C_DKRED, 11)
+          "K1A+K1B+K1C\n(3\u00d7 40A NO)", C_DKRED, 12)
     label(ax, k1_x + k1_w / 2, 2.1,
-          "Cmd: '1'", C_DKRED, 9, 'center', 'bottom', False, True)
+          "Cmd: '1'", C_DKRED, 11, 'center', 'bottom', False, True)
 
     # SP_BUS wire to KSP
     sp_y = 3.0
@@ -244,31 +244,52 @@ def page_power_path(pdf):
     # Wire to 1-phase load
     wire(ax, ksp_x + ksp_w, sp_y, 13.5, sp_y, C_DKRED, LW_PW)
     block(ax, 13.5, 2.3, 2.5, 1.5, "1\u03A6 LOAD", C_PURPLE, '#7B1FA2', 14)
-    label(ax, 14.75, 2.7, "125A max", '#7B1FA2', 11)
+    label(ax, 14.75, 2.7, "125A max", '#7B1FA2', 12)
 
-    # ─── NEUTRAL BUS ───
+    # ─── NEUTRAL BUS & RETURN TO ALL LOADS ───
     ny = 1.0
     wire(ax, agx_r, neut_y, agx_r, ny, C_NEUT, LW_N)
     wire(ax, agx_r, ny, 16.0, ny, C_NEUT, LW_N)
-    label(ax, 9.0, ny - 0.25,
+    label(ax, 7.0, ny - 0.25,
           "NEUTRAL BUS  (common return \u2014 not switched \u2014 to all loads)",
           C_NEUT, 12, 'center', 'top', True)
 
-    # ─── INTERLOCK NOTE (right side) ───
-    block(ax, 14.2, 6.2, 2.0, 3.5, "INTERLOCK", C_RED_BG, C_DKRED, 13)
-    label(ax, 15.2, 8.8,
-          "K3 group and\nK1+KSP group\nMUTUALLY\nEXCLUSIVE",
+    # Vertical neutral return bus (right of FORM 3 loads, clear of 1Φ load)
+    ld_r = ldx + ldw  # 13.0
+    nr_x = 13.3  # neutral return x (clear of loads at 13.0 and 1Φ at 13.5)
+    wire(ax, nr_x, ny, nr_x, pha_y, C_NEUT, LW_N)
+    dot(ax, nr_x, ny, C_NEUT, 10)
+    label(ax, nr_x - 0.15, 4.75, "N RETURN", C_NEUT, 11,
+          'right', 'center', True)
+
+    # Horizontal neutral stubs from each FORM 3 load to neutral return
+    for ph, y, col in phases:
+        wire(ax, ld_r, y, nr_x, y, C_NEUT, LW_N)
+        dot(ax, ld_r, y, C_NEUT, 9)
+        dot(ax, nr_x, y, C_NEUT, 9)
+
+    # 1-phase load neutral return (right side, down to neutral bus)
+    f1_nr_x = 16.1
+    wire(ax, 16.0, sp_y, f1_nr_x, sp_y, C_NEUT, LW_N)
+    wire(ax, f1_nr_x, sp_y, f1_nr_x, ny, C_NEUT, LW_N)
+    dot(ax, 16.0, sp_y, C_NEUT, 9)
+    dot(ax, f1_nr_x, ny, C_NEUT, 9)
+    label(ax, 16.1, 2.0, "N", C_NEUT, 13, 'center', 'center', True)
+
+    # ─── INTERLOCK & WIRE COLOURS (text labels, no block) ───
+    label(ax, 15.0, 9.5, "INTERLOCK", C_DKRED, 13, 'center', 'center', True)
+    label(ax, 15.0, 9.0,
+          "K3 group and K1+KSP\nare MUTUALLY EXCLUSIVE",
           C_DKRED, 10, 'center', 'center', True)
-    label(ax, 15.2, 7.1,
-          "NC aux contacts\nin coil supply\npaths prevent\nboth energised",
+    label(ax, 15.0, 8.3,
+          "NC aux contacts in\ncoil supply paths\nprevent both energised",
           C_DKRED, 9, 'center', 'center')
 
-    # ─── WIRE COLOUR LEGEND ───
-    label(ax, 15.2, 5.7, "WIRE COLOURS", '#424242', 11, 'center', 'center', True)
+    label(ax, 15.0, 7.4, "WIRE COLOURS", '#424242', 12, 'center', 'center', True)
     for i, (lbl, c) in enumerate([
         ("Phase A = RED", C_PH_A), ("Phase B = BROWN", C_PH_B),
         ("Phase C = GREY", C_PH_C), ("Neutral = BLACK", C_NEUT)]):
-        label(ax, 15.2, 5.3 - i * 0.3, lbl, c, 10, 'center', 'center', True)
+        label(ax, 15.0, 7.0 - i * 0.35, lbl, c, 11, 'center', 'center', True)
 
     pdf.savefig(fig, bbox_inches='tight')
     plt.close(fig)
@@ -304,7 +325,7 @@ def page_relay_drives(pdf):
         ("GPIO17", "KSP", ksp_y, C_DKRED),
     ]
     for gpio, dest, y, col in drive_pins:
-        label(ax, ex + 0.2, y, f"{gpio} \u2192", col, 10,
+        label(ax, ex + 0.2, y, f"{gpio} \u2192", col, 11,
               'left', 'center', True, True)
         dot(ax, er, y, col, 7)
 
@@ -328,10 +349,10 @@ def page_relay_drives(pdf):
     ]
     for inp, outp, y, col in channels:
         dot(ax, ul, y, col, 7)
-        label(ax, ul + 0.15, y + 0.16, inp, C_TEAL, 10,
+        label(ax, ul + 0.15, y + 0.16, inp, C_TEAL, 11,
               'left', 'bottom', True, True)
         dot(ax, ur, y, col, 7)
-        label(ax, ur - 0.15, y + 0.16, outp, C_TEAL, 10,
+        label(ax, ur - 0.15, y + 0.16, outp, C_TEAL, 11,
               'right', 'bottom', True, True)
         # Wire: ESP32 -> ULN
         wire(ax, er, y, ul, y, col, LW_DRV)
@@ -362,7 +383,7 @@ def page_relay_drives(pdf):
           C_BLUE, 11, 'left', 'center', True, True)
     label(ax, ix + 0.2, 8.3,
           "If K1 or KSP energised \u2192 K3 coils blocked",
-          C_LGREY, 9.5, 'left', 'center')
+          C_LGREY, 10, 'left', 'center')
 
     # K3 coil labels at wire entry points
     for lbl, uln_y, col in [
@@ -385,7 +406,7 @@ def page_relay_drives(pdf):
           C_DKRED, 11, 'left', 'center', True, True)
     label(ax, jx + 0.2, 4.7,
           "If any K3 contactor energised \u2192 K1/KSP blocked",
-          C_LGREY, 9.5, 'left', 'center')
+          C_LGREY, 10, 'left', 'center')
 
     # K1/KSP coil labels at wire entry points
     label(ax, jx + 0.3, k1_y,
@@ -466,7 +487,7 @@ def page_feedback(pdf):
         ("KSP AUX (NO)", fb_yksp, C_DKRED),
     ]
     for name, y, col in aux_contacts:
-        label(ax, cx + 0.2, y, name, col, 10, 'left', 'center', True, True)
+        label(ax, cx + 0.2, y, name, col, 11, 'left', 'center', True, True)
         dot(ax, cr, y, col, 6)
 
     label(ax, cx + cw / 2, 4.55,
@@ -531,7 +552,7 @@ def page_feedback(pdf):
         ("GPIO39 \u2190 KSP", fb_yksp, C_DKRED),
     ]
     for pin_name, y, col in fb_pins:
-        label(ax, ex + 0.2, y, pin_name, col, 11,
+        label(ax, ex + 0.2, y, pin_name, col, 12,
               'left', 'center', True, True)
         dot(ax, el, y, col, 6)
 
@@ -552,7 +573,7 @@ def page_feedback(pdf):
 
     # ─── STATUS LEDs ───
     lx, ly, lw_, lh = 0.8, 0.5, 5.0, 3.3
-    block(ax, lx, ly, lw_, lh, "STATUS LEDs", C_YELLOW, '#F57F17', 13)
+    block(ax, lx, ly, lw_, lh, "STATUS LEDs", C_YELLOW, '#F57F17', 14)
 
     leds = [
         ("GPIO18 \u2192 330\u03A9 \u2192 GREEN \u2192 0V", C_DKGREEN,
@@ -563,11 +584,14 @@ def page_feedback(pdf):
          "BLINK = fault  |  SOLID = E-stop"),
     ]
     for i, (pin, col, note) in enumerate(leds):
-        ly_ = 3.3 - i * 0.7
-        label(ax, lx + 0.2, ly_, pin, col, 10,
+        ly_ = 3.2 - i * 0.7
+        label(ax, lx + 0.2, ly_, pin, col, 11,
               'left', 'center', True, True)
-        label(ax, lx + 0.2, ly_ - 0.28, note, C_LGREY, 9,
+        label(ax, lx + 0.2, ly_ - 0.28, note, C_LGREY, 10,
               'left', 'center')
+
+    # LED GND connection
+    rail_connection(ax, lx + 1.0, ly, C_RAIL0, "\u2193 0V (GND)", 'down')
 
     # ─── E-STOP ───
     sx, sy, sw, sh = 7.0, 0.5, 9.0, 3.3
