@@ -68,7 +68,7 @@ See the [Operation Manual](docs/OPERATION_MANUAL.md) for full wiring details. Ke
 | GPIO36 | K1 feedback | PC817-4 opto → K1 AUX(NO) |
 | GPIO39 | KSP feedback | PC817-5 opto → KSP AUX(NO) |
 | GPIO35 | E-stop | NO pushbutton to GND |
-| GPIO18/19/21 | LEDs | Green/Blue/Red via 330R |
+| GPIO18/19/21 | LEDs | Green (330Ω) / Blue (100Ω) / Red (330Ω) |
 
 **Mains input:** 230VAC via IEC C14 panel inlet → 6A DIN-rail MCB → 24V PSU (Mean Well HDR-100-24).
 
@@ -140,7 +140,8 @@ Open a serial terminal at **115200 baud** and send single-character commands:
 | PC817 optocoupler | Sharp PC817X | 5 | ~£0.30 each |
 | 4.7kΩ resistor | Opto LED current limit | 5 | ~£0.05 each |
 | 10kΩ resistor | Pull-up (feedback + E-stop) | 6 | ~£0.05 each |
-| 330Ω resistor + LED | Status indicators (G/B/R) | 3 | ~£0.25 each |
+| 330Ω resistor + LED (green, red) | Status indicators | 2 | ~£0.25 each |
+| 100Ω resistor + LED (blue) | FORM1 indicator | 1 | ~£0.25 |
 | 24V DIN-rail PSU | Mean Well HDR-100-24 | 1 | ~£35 |
 | IEC C14 panel inlet | Mains input (with fuse holder) | 1 | ~£5 |
 | DIN-rail MCB 6A type B | Mains overcurrent protection | 1 | ~£8 |

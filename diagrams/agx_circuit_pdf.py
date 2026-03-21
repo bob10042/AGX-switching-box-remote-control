@@ -578,8 +578,8 @@ def page_feedback(pdf):
     leds = [
         ("GPIO18 \u2192 330\u03A9 \u2192 GREEN \u2192 0V", C_DKGREEN,
          "ON = any FORM3 phase active"),
-        ("GPIO19 \u2192 330\u03A9 \u2192 BLUE  \u2192 0V", C_DKBLUE,
-         "ON = FORM1 active"),
+        ("GPIO19 \u2192 100\u03A9 \u2192 BLUE  \u2192 0V", C_DKBLUE,
+         "ON = FORM1 active  (100\u03A9: 3mA @ 3.3V)"),
         ("GPIO21 \u2192 330\u03A9 \u2192 RED   \u2192 0V", C_DKRED,
          "BLINK = fault  |  SOLID = E-stop"),
     ]
@@ -650,8 +650,8 @@ def page_pinout_bom(pdf):
         ["35",  "IN",  "E-STOP button", "NO pushbutton to GND",    "INPUT ONLY, ext pull-up"],
         ["18",  "OUT", "LED green",     "330\u03A9 \u2192 LED \u2192 GND",
          "FORM3/phase active"],
-        ["19",  "OUT", "LED blue",      "330\u03A9 \u2192 LED \u2192 GND",
-         "FORM1 active"],
+        ["19",  "OUT", "LED blue",      "100\u03A9 \u2192 LED \u2192 GND",
+         "FORM1 active (3mA)"],
         ["21",  "OUT", "LED red",       "330\u03A9 \u2192 LED \u2192 GND",
          "Fault / E-stop"],
     ]
@@ -744,8 +744,10 @@ def page_pinout_bom(pdf):
          "Opto LED",        "~\u00a30.05 ea"),
         ("5\u00d7", "10k\u03A9 resistor",
          "Pull-up",         "~\u00a30.05 ea"),
-        ("3\u00d7", "330\u03A9 + LED",
+        ("2\u00d7", "330\u03A9 + LED (green, red)",
          "Status LEDs",     "~\u00a30.25 ea"),
+        ("1\u00d7", "100\u03A9 + LED (blue)",
+         "FORM1 indicator", "~\u00a30.25"),
         ("1\u00d7", "24VDC DIN-rail PSU 5A",
          "Coil power",      "~\u00a335"),
         ("1\u00d7", "NC mushroom E-stop",

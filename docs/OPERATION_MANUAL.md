@@ -153,9 +153,9 @@ The ESP32 is the central controller. It communicates with the laptop via USB ser
 | 36 | INPUT | K1 feedback | PC817-4 opto collector (INPUT ONLY, VP) |
 | 39 | INPUT | KSP feedback | PC817-5 opto collector (INPUT ONLY, VN) |
 | 35 | INPUT | E-stop button | NO pushbutton to GND (INPUT ONLY) |
-| 18 | OUTPUT | Green LED | 330R → LED → GND (Phase/FORM3 active) |
-| 19 | OUTPUT | Blue LED | 330R → LED → GND (FORM1 active) |
-| 21 | OUTPUT | Red LED | 330R → LED → GND (Fault/E-stop) |
+| 18 | OUTPUT | Green LED | 330Ω → LED → GND (Phase/FORM3 active, ~4mA) |
+| 19 | OUTPUT | Blue LED | 100Ω → LED → GND (FORM1 active, ~3mA) |
+| 21 | OUTPUT | Red LED | 330Ω → LED → GND (Fault/E-stop, ~4.5mA) |
 
 **Note:** GPIO 34, 35, 36, 39 are input-only pins with no internal pull-up. External 10k pull-up resistors to 3.3V are required for all feedback inputs and the E-stop input.
 
@@ -338,9 +338,9 @@ FEEDBACK (contactor AUX → optocouplers → ESP32):
 E-STOP AND LEDs:
 3.3V ──► 10kΩ ──► ESP32 GPIO35 ──► NO pushbutton ──► 0V
 
-ESP32 GPIO18 ──► 330Ω ──► Green LED ──► 0V
-ESP32 GPIO19 ──► 330Ω ──► Blue LED  ──► 0V
-ESP32 GPIO21 ──► 330Ω ──► Red LED   ──► 0V
+ESP32 GPIO18 ──► 330Ω ──► Green LED ──► 0V   (Vf≈2.0V, I≈3.9mA)
+ESP32 GPIO19 ──► 100Ω ──► Blue LED  ──► 0V   (Vf≈3.0V, I≈3.0mA)
+ESP32 GPIO21 ──► 330Ω ──► Red LED   ──► 0V   (Vf≈1.8V, I≈4.5mA)
 ```
 
 ---
