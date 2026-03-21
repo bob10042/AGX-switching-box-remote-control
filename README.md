@@ -35,7 +35,8 @@ Four independent layers of protection prevent dangerous states:
 ├── firmware/
 │   └── agx_switch_controller.ino      ← ESP32 Arduino firmware (Rev 2.0)
 ├── docs/
-│   └── OPERATION_MANUAL.md            ← Detailed operation manual
+│   ├── OPERATION_MANUAL.md            ← Detailed operation manual
+│   └── CONNECTION_SCHEDULE.md         ← Wire-by-wire connection list (101 wires)
 └── diagrams/
     ├── AGX_Test_Box_Circuit.pdf       ← Circuit block diagrams (5 pages, A3)
     └── agx_circuit_pdf.py             ← Python script to regenerate diagrams
@@ -90,6 +91,12 @@ Open a serial terminal at **115200 baud** and send single-character commands:
 | `T` | Run self-test | - |
 
 ## Documentation
+
+- **[Connection Schedule](docs/CONNECTION_SCHEDULE.md)** - Wire-by-wire build document:
+  - 101 numbered wires (W1–W101) with From/To/Colour/Size
+  - Resistor schedule with calculated values
+  - LADN11 auxiliary contact block assignments
+  - ULN2003A and PC817 pin assignments
 
 - **[Operation Manual](docs/OPERATION_MANUAL.md)** - Comprehensive guide covering:
   - All operating modes (Phase A, B, C, FORM 3, FORM 1, OFF)
