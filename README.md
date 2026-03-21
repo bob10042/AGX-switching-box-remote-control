@@ -98,11 +98,12 @@ Open a serial terminal at **115200 baud** and send single-character commands:
   - Serial command protocol with example session
   - Safety systems and commissioning procedure
 
-- **[Circuit Diagrams (PDF)](diagrams/AGX_Test_Box_Circuit.pdf)** - 4-page A3 landscape:
+- **[Circuit Diagrams (PDF)](diagrams/AGX_Test_Box_Circuit.pdf)** - 5-page A3 landscape:
   - Page 1: Power path (individual K3A/K3B/K3C + FORM 1 routing)
   - Page 2: Relay drive circuit (ESP32 → ULN2003A → coils with interlock)
   - Page 3: Feedback optocouplers, LEDs, E-stop
   - Page 4: GPIO pinout table, serial commands, BOM
+  - Page 5: Mains input, 24V DIN-rail PSU, HW E-stop, earth bonding
 
 ## Wire Colours
 
@@ -125,7 +126,10 @@ Open a serial terminal at **115200 baud** and send single-character commands:
 | ULN2003A Darlington driver | TI ULN2003AN | 1 | ~£0.50 |
 | PC817 optocoupler | Sharp PC817X | 5 | ~£0.30 each |
 | 24V DIN-rail PSU | Mean Well HDR-100-24 | 1 | ~£35 |
-| **Total estimate** | | | **~£650 - £1,100** |
+| IEC C14 panel inlet | Mains input connector | 1 | ~£5 |
+| DIN-rail MCB 6A type B | Mains protection | 1 | ~£8 |
+| IEC C13 mains cable | Mains lead (UK plug) | 1 | ~£5 |
+| **Total estimate** | | | **~£670 - £1,120** |
 
 UK suppliers: RS Components, Farnell, Mouser, Amazon UK, Screwfix/CEF.
 

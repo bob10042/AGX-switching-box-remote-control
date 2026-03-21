@@ -213,10 +213,51 @@ When the contactor closes, the NO auxiliary contact closes, current flows throug
 
 ## 5. Supply Rails and Power Distribution
 
+### Mains Input (230VAC)
+The switching box requires a 230VAC 50Hz mains supply to power the internal 24V DIN-rail PSU.
+
+**Mains wiring chain:**
+```
+MAINS (230VAC) ──► IEC C14 panel inlet ──► 6A DIN-rail MCB (type B)
+                                                    │
+                                                    ▼
+                                           ┌─────────────────┐
+                                           │ 24V DIN-rail PSU│
+                                           │ (Mean Well      │
+                                           │  HDR-100-24)    │
+                                           │                 │
+                                           │ L ◄── MCB out   │
+                                           │ N ◄── Neutral   │
+                                           │ PE ◄── Earth    │
+                                           │                 │
+                                           │ +V ──► E-STOP   │──► +24VDC RAIL
+                                           │ -V ─────────────│──► 0V RAIL
+                                           └─────────────────┘
+```
+
+**Components:**
+- **IEC C14 panel-mount inlet** - standard fused inlet on enclosure rear panel
+- **DIN-rail MCB 6A type B** - overcurrent protection for PSU input
+- **Mains cable** - IEC C13 female to UK 13A plug (fused at 3A in plug)
+
+**Mains wire colours (UK):**
+| Wire | Colour | Connection |
+|------|--------|------------|
+| Live | **Brown** | IEC inlet L → MCB input → MCB output → PSU L |
+| Neutral | **Blue** | IEC inlet N → PSU N |
+| Earth | **Green/Yellow** | IEC inlet E → enclosure bonding → DIN rail → PSU PE |
+
+**Safety notes:**
+- All mains wiring must be performed by a competent person
+- Earth bonding to the metal enclosure and DIN rail is mandatory
+- The IEC inlet should include an integral fuse holder (spare fuses recommended)
+- Keep mains wiring physically separated from low-voltage control wiring
+
 ### +24VDC Rail
 - **Source:** DIN-rail power supply (Mean Well HDR-100-24 or equivalent, 24VDC 5A)
-- **Feeds:** Contactor coils (via ULN2003 and interlock contacts), optocoupler LED circuits, hardware E-stop
-- **Protection:** Fused at PSU output
+- **Path:** PSU +V output → hardware E-stop (NC mushroom-head) → +24VDC rail
+- **Feeds:** Contactor coils (via ULN2003 and interlock contacts), optocoupler LED circuits
+- **Protection:** Fused at PSU output, E-stop in +24V line
 
 ### 0V Rail (GND)
 - **Common ground** shared between 24VDC system and ESP32 GND
