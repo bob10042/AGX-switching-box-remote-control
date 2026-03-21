@@ -108,12 +108,13 @@ Open a serial terminal at **115200 baud** and send single-character commands:
   - Serial command protocol with example session
   - Safety systems and commissioning procedure
 
-- **[Circuit Diagrams (PDF)](diagrams/AGX_Test_Box_Circuit.pdf)** - 5-page A3 landscape:
-  - Page 1: Power path (individual K3A/K3B/K3C + FORM 1 routing)
+- **[Circuit Diagrams (PDF)](diagrams/AGX_Test_Box_Circuit.pdf)** - 6-page A3 landscape:
+  - Page 1: Power path (individual K3A/K3B/K3C + FORM 1 + neutral returns)
   - Page 2: Relay drive circuit (ESP32 → ULN2003A → coils with interlock)
-  - Page 3: Feedback optocouplers, LEDs, E-stop
-  - Page 4: GPIO pinout table, serial commands, BOM
-  - Page 5: Mains input, 24V DIN-rail PSU, HW E-stop, earth bonding
+  - Page 3: Feedback optocouplers (PC817 4-pin DIP, pin-by-pin connections)
+  - Page 4: Status LEDs (with calculated resistors) & E-stop (SW + HW)
+  - Page 5: GPIO pinout table, serial commands, BOM
+  - Page 6: Mains input, 24V DIN-rail PSU, HW E-stop, earth bonding
 
 ## Wire Colours
 

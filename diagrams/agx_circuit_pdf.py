@@ -457,27 +457,119 @@ def page_relay_drives(pdf):
 
 
 # ══════════════════════════════════════════
-# PAGE 3: FEEDBACK, LEDs, E-STOP
+# PAGE 3: FEEDBACK OPTOCOUPLERS
 # ══════════════════════════════════════════
 
 def page_feedback(pdf):
     fig, ax = new_page(pdf,
-        "AGX TEST BOX \u2014 FEEDBACK, LEDs & E-STOP",
-        "5\u00d7 PC817 optocoupler feedback  |  3\u00d7 status LEDs"
-        "  |  Software + hardware E-stop")
+        "AGX TEST BOX \u2014 FEEDBACK OPTOCOUPLERS",
+        "5\u00d7 PC817 (4-pin DIP)  |  Isolated contactor state sensing"
+        "  |  24V \u2192 3.3V level shift")
 
     # ─── SUPPLY RAILS (with 3.3V) ───
     y24, y0v, y33 = draw_supply_rails(ax, 10.2, show_33v=True)
 
-    # Feedback pin y-positions
-    fb_ya, fb_yb, fb_yc = 8.0, 7.3, 6.6
-    fb_yk1, fb_yksp = 5.8, 5.2
+    # Feedback pin y-positions (spread out across full page height)
+    fb_ya, fb_yb, fb_yc = 8.0, 6.8, 5.6
+    fb_yk1, fb_yksp = 4.0, 2.8
 
-    # ─── CONTACTOR AUX CONTACTS ───
-    cx, cy, cw, ch = 0.8, 4.3, 3.5, 4.5
+    # ─── ESP32 FEEDBACK INPUTS (left side) ───
+    ex, ey_, ew, eh = 0.5, 1.8, 3.5, 7.0
+    block(ax, ex, ey_, ew, eh,
+          "ESP32\nFEEDBACK\nINPUTS", C_GREEN, C_DKGREEN, 15)
+    er_fb = ex + ew  # 4.0
+
+    fb_pins = [
+        ("GPIO32 \u2192 K3A", fb_ya, C_PH_A),
+        ("GPIO33 \u2192 K3B", fb_yb, C_PH_B),
+        ("GPIO34 \u2192 K3C", fb_yc, C_PH_C),
+        ("GPIO36 \u2192 K1",  fb_yk1, C_DKRED),
+        ("GPIO39 \u2192 KSP", fb_yksp, C_DKRED),
+    ]
+    for pin_name, y, col in fb_pins:
+        label(ax, ex + 0.2, y, pin_name, col, 12,
+              'left', 'center', True, True)
+        dot(ax, er_fb, y, col, 7)
+
+    label(ax, ex + ew / 2, 2.2,
+          "GPIO34,36,39:\ninput-only pins\n(no internal pull-up)\next 10k\u03A9 to 3.3V",
+          C_LGREY, 10)
+
+    # ─── OPTOCOUPLER BLOCK (centre) ───
+    ox, oy, ow, oh = 5.5, 1.8, 5.5, 7.0
+    block(ax, ox, oy, ow, oh,
+          "5\u00d7 PC817 OPTOCOUPLERS  (4-pin DIP)", C_ORANGE, '#E65100', 14)
+
+    # Pin connections - well spaced
+    label(ax, ox + 0.3, 8.0,
+          "PC817 PIN CONNECTIONS:", '#E65100', 13, 'left', 'center', True)
+
+    label(ax, ox + 0.3, 7.4,
+          "Pin 1 (Anode)     \u2190 +24V via 4.7k\u03A9",
+          '#424242', 12, 'left', 'center', False, True)
+    label(ax, ox + 0.3, 6.85,
+          "Pin 2 (Cathode)   \u2192 AUX NO contact \u2192 0V",
+          '#424242', 12, 'left', 'center', False, True)
+    label(ax, ox + 0.3, 6.3,
+          "Pin 3 (Emitter)   \u2192 ESP32 GND / 0V",
+          '#424242', 12, 'left', 'center', False, True)
+    label(ax, ox + 0.3, 5.75,
+          "Pin 4 (Collector) \u2192 10k\u03A9 to 3.3V + ESP32 GPIO",
+          '#424242', 12, 'left', 'center', False, True)
+
+    # Logic section
+    label(ax, ox + 0.3, 5.0,
+          "OUTPUT LOGIC:", '#E65100', 13, 'left', 'center', True)
+    label(ax, ox + 0.3, 4.5,
+          "AUX CLOSED \u2192 LED on \u2192 Pin4 LOW  \u2192 GPIO LOW",
+          C_DKGREEN, 11, 'left', 'center', True, True)
+    label(ax, ox + 0.3, 4.0,
+          "AUX OPEN   \u2192 LED off \u2192 Pin4 HIGH \u2192 GPIO HIGH",
+          C_DKRED, 11, 'left', 'center', True, True)
+    label(ax, ox + 0.3, 3.5,
+          "Firmware: 5 reads, majority vote (3+ agree)",
+          C_LGREY, 10, 'left', 'center')
+
+    # Per-opto connection table
+    label(ax, ox + 0.3, 2.8,
+          "CONNECTIONS (all 5 identical circuit):",
+          '#E65100', 12, 'left', 'center', True)
+    opto_map = [
+        ("PC817-1", "K3A AUX(NO)", "GPIO32"),
+        ("PC817-2", "K3B AUX(NO)", "GPIO33"),
+        ("PC817-3", "K3C AUX(NO)", "GPIO34"),
+        ("PC817-4", "K1  AUX(NO)", "GPIO36"),
+        ("PC817-5", "KSP AUX(NO)", "GPIO39"),
+    ]
+    for i, (opto, aux, gpio) in enumerate(opto_map):
+        label(ax, ox + 0.3, 2.4 - i * 0.3,
+              f"{opto}:  Pin2 \u2192 {aux}    Pin4 \u2192 {gpio}",
+              '#424242', 10, 'left', 'center', False, True)
+
+    opl = ox       # 5.5
+    opr = ox + ow  # 11.0
+
+    # Wires from ESP32 to optos (Pin 4 / 3.3V side)
+    for pin_name, y, col in fb_pins:
+        wire(ax, er_fb, y, opl, y, col, LW_W)
+
+    label(ax, (er_fb + opl) / 2, 8.3,
+          "3.3V logic (Pin 4 collector)", C_DKGREEN, 11,
+          'center', 'bottom', True)
+
+    # Rail stubs on opto block
+    rail_connection(ax, opr - 0.5, oy + oh, C_RAIL,
+                    "\u2191 +24V (4.7k\u03A9 \u2192 Pin1 anode)", 'up')
+    rail_connection(ax, ox + 2.5, oy, C_RAIL0,
+                    "\u2193 0V (Pin2 cathode return + Pin3 emitter)", 'down')
+    rail_connection(ax, opl + 0.5, oy + oh, C_33V,
+                    "\u2191 3.3V (10k\u03A9 pull-up \u2192 Pin4)", 'up')
+
+    # ─── CONTACTOR AUX CONTACTS (right side) ───
+    cx, cy, cw, ch = 12.5, 1.8, 3.5, 7.0
     block(ax, cx, cy, cw, ch,
-          "CONTACTOR\nAUX CONTACTS\n(NO)", C_LTBLUE, C_BLUE, 13)
-    cr = cx + cw  # 4.3
+          "CONTACTOR\nAUX CONTACTS\n(NO)", C_LTBLUE, C_BLUE, 14)
+    cl = cx  # 12.5
 
     aux_contacts = [
         ("K3A AUX (NO)", fb_ya, C_PH_A),
@@ -487,134 +579,112 @@ def page_feedback(pdf):
         ("KSP AUX (NO)", fb_yksp, C_DKRED),
     ]
     for name, y, col in aux_contacts:
-        label(ax, cx + 0.2, y, name, col, 11, 'left', 'center', True, True)
-        dot(ax, cr, y, col, 6)
+        label(ax, cx + 0.2, y, name, col, 12, 'left', 'center', True, True)
+        dot(ax, cl, y, col, 7)
 
-    label(ax, cx + cw / 2, 4.55,
-          "Close when\ncontactor energised", C_LGREY, 9)
+    label(ax, cx + cw / 2, 2.2,
+          "LADN11 blocks\n(1NO + 1NC each)\n\nNO = feedback\nNC = interlock\n(see Page 2)",
+          C_LGREY, 10)
 
-    # ─── OPTOCOUPLER BLOCK ───
-    ox, oy, ow, oh = 6.2, 4.3, 4.5, 4.5
-    block(ax, ox, oy, ow, oh,
-          "5\u00d7 PC817 OPTOCOUPLERS", C_ORANGE, '#E65100', 13)
-
-    label(ax, ox + 0.2, 8.2,
-          "24V SIDE (LED):", '#E65100', 11, 'left', 'center', True)
-    label(ax, ox + 0.2, 7.85,
-          "+24V \u2192 4.7k\u03A9 \u2192 opto LED \u2192 AUX(NO) \u2192 0V",
-          '#424242', 10, 'left', 'center', False, True)
-    label(ax, ox + 0.2, 7.55,
-          "AUX closed = current flows = LED lit",
-          C_LGREY, 9, 'left', 'center')
-
-    label(ax, ox + 0.2, 7.1,
-          "3.3V SIDE (phototransistor):", '#E65100', 11,
-          'left', 'center', True)
-    label(ax, ox + 0.2, 6.75,
-          "3.3V \u2192 10k\u03A9 pull-up \u2192 collector \u2192 ESP32",
-          '#424242', 10, 'left', 'center', False, True)
-    label(ax, ox + 0.2, 6.45,
-          "Emitter \u2192 GND",
-          '#424242', 10, 'left', 'center', False, True)
-
-    label(ax, ox + 0.2, 5.95,
-          "OUTPUT LOGIC:", '#E65100', 11, 'left', 'center', True)
-    label(ax, ox + 0.2, 5.6,
-          "CLOSED \u2192 opto ON  \u2192 GPIO reads LOW",
-          C_DKGREEN, 10, 'left', 'center', True, True)
-    label(ax, ox + 0.2, 5.3,
-          "OPEN   \u2192 opto OFF \u2192 GPIO reads HIGH",
-          C_DKRED, 10, 'left', 'center', True, True)
-    label(ax, ox + 0.2, 5.0,
-          "5 reads, majority vote (3+ agree)",
-          C_LGREY, 9, 'left', 'center')
-
-    # Wires from aux contacts to optos
+    # Wires from optos to aux contacts (Pin 2 / 24V side)
     for name, y, col in aux_contacts:
-        wire(ax, cr, y, ox, y, col, LW_W)
+        wire(ax, opr, y, cl, y, col, LW_W)
 
-    # Rail stubs on opto block
-    rail_connection(ax, ox + 0.5, oy + oh, C_RAIL, "\u2191 +24V", 'up')
-    rail_connection(ax, ox + 1.5, oy, C_RAIL0, "\u2193 0V", 'down')
-    rail_connection(ax, ox + ow - 0.5, oy + oh, C_33V, "\u2191 3.3V", 'up')
+    label(ax, (opr + cl) / 2, 8.3,
+          "24V side (Pin 2 cathode)", '#E65100', 11,
+          'center', 'bottom', True)
 
-    # ─── ESP32 FEEDBACK INPUTS ───
-    ex, ey_, ew, eh = 12.5, 4.3, 3.5, 4.5
-    block(ax, ex, ey_, ew, eh,
-          "ESP32\nFEEDBACK INPUTS", C_GREEN, C_DKGREEN, 13)
-    el = ex  # 12.5
+    pdf.savefig(fig, bbox_inches='tight')
+    plt.close(fig)
 
-    fb_pins = [
-        ("GPIO32 \u2190 K3A", fb_ya, C_PH_A),
-        ("GPIO33 \u2190 K3B", fb_yb, C_PH_B),
-        ("GPIO34 \u2190 K3C", fb_yc, C_PH_C),
-        ("GPIO36 \u2190 K1",  fb_yk1, C_DKRED),
-        ("GPIO39 \u2190 KSP", fb_yksp, C_DKRED),
+
+# ══════════════════════════════════════════
+# PAGE 4: LEDs & E-STOP
+# ══════════════════════════════════════════
+
+def page_leds_estop(pdf):
+    fig, ax = new_page(pdf,
+        "AGX TEST BOX \u2014 STATUS LEDs & E-STOP",
+        "3\u00d7 status LEDs with calculated resistors"
+        "  |  Software + hardware E-stop")
+
+    # ─── STATUS LEDs (upper section, full width) ───
+    lx, ly, lw_, lh = 0.5, 5.5, 15.5, 4.5
+    block(ax, lx, ly, lw_, lh, "STATUS LEDs", C_YELLOW, '#F57F17', 16)
+
+    # LED circuit details - well spaced
+    label(ax, 0.8, 9.2,
+          "LED CIRCUITS  (ESP32 3.3V GPIO \u2192 resistor \u2192 LED \u2192 0V / GND):",
+          '#F57F17', 13, 'left', 'center', True)
+
+    led_data = [
+        ("GREEN", "GPIO18", "330\u03A9", "2.0V", "3.9mA",
+         "ON = any FORM3 phase active (K3A/K3B/K3C)", C_DKGREEN),
+        ("BLUE",  "GPIO19", "100\u03A9", "3.0V", "3.0mA",
+         "ON = FORM1 active (K1+KSP)", C_DKBLUE),
+        ("RED",   "GPIO21", "330\u03A9", "1.8V", "4.5mA",
+         "BLINK = fault  |  SOLID = E-stop", C_DKRED),
     ]
-    for pin_name, y, col in fb_pins:
-        label(ax, ex + 0.2, y, pin_name, col, 12,
-              'left', 'center', True, True)
-        dot(ax, el, y, col, 6)
 
-    label(ax, ex + ew / 2, 4.75,
-          "GPIO34,36,39: input-only\n(ext 10k pull-up to 3.3V)",
-          C_LGREY, 9)
-    label(ax, ex + ew / 2, 4.45,
-          "ESP32 powered via USB\n(own board, own regulator)",
-          C_DKGREEN, 9, 'center', 'center', True)
+    for i, (colour, gpio, res, vf, current, note, col) in enumerate(led_data):
+        by = 8.5 - i * 1.2
+        label(ax, 0.8, by,
+              f"{colour} LED:", col, 14, 'left', 'center', True)
+        label(ax, 0.8, by - 0.4,
+              f"{gpio} \u2192 {res} \u2192 {colour} LED \u2192 0V (GND)",
+              col, 12, 'left', 'center', True, True)
+        label(ax, 0.8, by - 0.75,
+              f"Vf \u2248 {vf}   I = (3.3V \u2212 {vf}) / {res} = {current}",
+              '#424242', 11, 'left', 'center', False, True)
+        label(ax, 8.5, by - 0.4,
+              note, C_LGREY, 11, 'left', 'center')
 
-    # Wires from optos to ESP32
-    opr = ox + ow  # 10.7
-    for name, y, col in aux_contacts:
-        wire(ax, opr, y, el, y, col, LW_W)
+    # GND connection
+    rail_connection(ax, 1.5, ly, C_RAIL0,
+                    "\u2193 0V (GND \u2014 LED cathode return)", 'down')
 
-    label(ax, (opr + el) / 2, 8.3,
-          "3.3V logic", C_DKGREEN, 10, 'center', 'bottom', True)
-
-    # ─── STATUS LEDs ───
-    lx, ly, lw_, lh = 0.8, 0.5, 5.0, 3.3
-    block(ax, lx, ly, lw_, lh, "STATUS LEDs", C_YELLOW, '#F57F17', 14)
-
-    leds = [
-        ("GPIO18 \u2192 330\u03A9 \u2192 GREEN \u2192 0V", C_DKGREEN,
-         "ON = any FORM3 phase active"),
-        ("GPIO19 \u2192 100\u03A9 \u2192 BLUE  \u2192 0V", C_DKBLUE,
-         "ON = FORM1 active  (100\u03A9: 3mA @ 3.3V)"),
-        ("GPIO21 \u2192 330\u03A9 \u2192 RED   \u2192 0V", C_DKRED,
-         "BLINK = fault  |  SOLID = E-stop"),
-    ]
-    for i, (pin, col, note) in enumerate(leds):
-        ly_ = 3.2 - i * 0.7
-        label(ax, lx + 0.2, ly_, pin, col, 11,
-              'left', 'center', True, True)
-        label(ax, lx + 0.2, ly_ - 0.28, note, C_LGREY, 10,
-              'left', 'center')
-
-    # LED GND connection
-    rail_connection(ax, lx + 1.0, ly, C_RAIL0, "\u2193 0V (GND)", 'down')
-
-    # ─── E-STOP ───
-    sx, sy, sw, sh = 7.0, 0.5, 9.0, 3.3
+    # ─── E-STOP (lower section) ───
+    sx, sy, sw, sh = 0.5, 0.5, 15.5, 4.5
     block(ax, sx, sy, sw, sh,
-          "E-STOP  (two independent systems)", C_RED_BG, C_DKRED, 13)
+          "E-STOP  (two independent systems)", C_RED_BG, C_DKRED, 16)
 
-    label(ax, sx + 0.3, 3.3,
-          "SOFTWARE E-STOP:", C_DKRED, 12, 'left', 'center', True)
-    label(ax, sx + 0.3, 2.9,
-          "GPIO35 \u2190 NO pushbutton \u2192 GND  (external pull-up to 3.3V)",
-          '#424242', 10, 'left', 'center', False, True)
-    label(ax, sx + 0.3, 2.5,
-          "Press = GPIO reads LOW \u2192 all outputs OFF \u2192 ESTOP state",
-          '#424242', 10, 'left', 'center', False, True)
+    # Software E-stop (left side)
+    label(ax, 0.8, 4.2,
+          "SOFTWARE E-STOP:", C_DKRED, 14, 'left', 'center', True)
+    label(ax, 0.8, 3.7,
+          "ESP32 GPIO35 \u2190 NO pushbutton \u2192 GND",
+          '#424242', 12, 'left', 'center', False, True)
+    label(ax, 0.8, 3.25,
+          "External 10k\u03A9 pull-up to 3.3V (GPIO35 is input-only)",
+          '#424242', 11, 'left', 'center', False, True)
+    label(ax, 0.8, 2.8,
+          "Press button \u2192 GPIO reads LOW \u2192 firmware disables all outputs",
+          '#424242', 11, 'left', 'center')
+    label(ax, 0.8, 2.35,
+          "Send '0' command to reset from ESTOP state",
+          C_LGREY, 10, 'left', 'center')
 
-    label(ax, sx + 0.3, 1.9,
-          "HARDWARE E-STOP:", C_DKRED, 12, 'left', 'center', True)
-    label(ax, sx + 0.3, 1.5,
-          "NC mushroom-head in +24V supply (before interlock buses)",
-          '#424242', 10, 'left', 'center', False, True)
-    label(ax, sx + 0.3, 1.1,
-          "Cuts +24V to ALL coils \u2014 independent of ESP32",
-          C_DKRED, 10, 'left', 'center', True)
+    # Hardware E-stop (right side)
+    label(ax, 8.5, 4.2,
+          "HARDWARE E-STOP:", C_DKRED, 14, 'left', 'center', True)
+    label(ax, 8.5, 3.7,
+          "NC mushroom-head pushbutton in +24V supply line",
+          '#424242', 12, 'left', 'center', False, True)
+    label(ax, 8.5, 3.25,
+          "Positioned AFTER PSU, BEFORE both interlock buses",
+          '#424242', 11, 'left', 'center')
+    label(ax, 8.5, 2.8,
+          "When pressed: physically cuts +24V to ALL contactor coils",
+          C_DKRED, 11, 'left', 'center', True)
+    label(ax, 8.5, 2.35,
+          "Works even if ESP32 has crashed or firmware is hung",
+          '#424242', 11, 'left', 'center')
+    label(ax, 8.5, 1.9,
+          "Twist to release, then send '0' to clear firmware state",
+          C_LGREY, 10, 'left', 'center')
+
+    # Divider line between SW and HW sections
+    wire(ax, 8.2, 4.5, 8.2, 1.0, C_LGREY, 1.0)
 
     pdf.savefig(fig, bbox_inches='tight')
     plt.close(fig)
@@ -975,16 +1045,18 @@ def main():
         page_power_path(pdf)
         page_relay_drives(pdf)
         page_feedback(pdf)
+        page_leds_estop(pdf)
         page_pinout_bom(pdf)
         page_mains_psu(pdf)
 
     print(f"PDF saved: {OUT}")
-    print(f"  5 pages, A3 landscape")
+    print(f"  6 pages, A3 landscape")
     print(f"  Page 1: Power path - individual K3A/K3B/K3C + FORM1")
     print(f"  Page 2: Relay drive circuit - ESP32 -> ULN2003 -> coils + interlock")
-    print(f"  Page 3: Feedback optocouplers, LEDs, E-stop")
-    print(f"  Page 4: GPIO pinout, serial commands, BOM")
-    print(f"  Page 5: Mains input, 24V PSU, HW E-stop, earth bonding")
+    print(f"  Page 3: Feedback optocouplers (PC817 4-pin, pin connections)")
+    print(f"  Page 4: Status LEDs (with resistor calcs) & E-stop")
+    print(f"  Page 5: GPIO pinout, serial commands, BOM")
+    print(f"  Page 6: Mains input, 24V PSU, HW E-stop, earth bonding")
 
 
 if __name__ == "__main__":
