@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""AGX Test Box Rev 2.0 - Multi-page PDF block diagrams.
+"""AGX Test Box Rev 2.0 - Multi-page PDF circuit schematics.
 
+Uses schemdraw for proper electrical schematic symbols on matplotlib pages.
 Individual phase selection: K3A, K3B, K3C driven independently.
 5 ULN2003 channels, 5 optocoupler feedback circuits.
-Phase A=RED, B=BROWN, C=GREY, Neutral=BLACK.
 
 Pages:
-  1. Power Path   - AGX phases through contactors to loads
-  2. Relay Drives - ESP32 -> ULN2003A -> contactor coils (with interlock)
-  3. Feedback     - Optocoupler circuits, E-stop, LEDs
-  4. Pinout, Sequence, BOM
+  1. Power Path   - contactor switch symbols on phase wires
+  2. Relay Drives - ESP32/ULN2003A ICs, coil symbols, interlock chains
+  3. Feedback     - PC817 optocoupler symbols with resistors
+  4. LEDs & E-Stop - LED/resistor/ground circuits, push-button switches
+  5. Pinout, Commands, BOM - tables (unchanged)
+  6. Mains Input & PSU - breaker, PSU, earth symbols
 """
 
 import matplotlib
@@ -17,7 +19,11 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.backends.backend_pdf import PdfPages
+import schemdraw
+import schemdraw.elements as elm
 import os
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning)
 
 OUT = os.path.join(r"C:\Users\bob43\Downloads", "AGX_Test_Box_Circuit.pdf")
 
@@ -47,17 +53,21 @@ C_RAIL  = '#D50000'   # +24V rail
 C_RAIL0 = '#1565C0'   # 0V rail
 C_33V   = '#2E7D32'   # 3.3V rail
 
-# Line widths
+# Line widths (for matplotlib elements: rails, buses)
 LW    = 3.0    # block border
 LW_W  = 2.5    # signal wire
 LW_PW = 5.0    # power/phase wire
 LW_N  = 7.0    # neutral wire
-LW_RL = 4.0    # supply rail (thicker)
+LW_RL = 4.0    # supply rail
 LW_DRV = 3.0   # drive wire
 
 # A3 landscape
 PAGE_W, PAGE_H = 16.54, 11.69
 
+
+# ══════════════════════════════════════════
+# UTILITY FUNCTIONS (matplotlib)
+# ══════════════════════════════════════════
 
 def new_page(pdf, title, subtitle=""):
     fig, ax = plt.subplots(figsize=(PAGE_W, PAGE_H))
@@ -75,7 +85,7 @@ def new_page(pdf, title, subtitle=""):
         ax.text(PAGE_W / 2, title_y + 0.15, subtitle, ha='center', va='center',
                 fontsize=13, color='#B3E5FC')
     ax.text(PAGE_W / 2, 0.12,
-            "DISCUSSION DOCUMENT  |  Rev 4.0  |  2026-03-20  |  Individual Phase Selection",
+            "DISCUSSION DOCUMENT  |  Rev 5.0  |  2026-03-29  |  Schematic Symbols",
             ha='center', va='center', fontsize=7, color=C_LGREY, style='italic')
     return fig, ax
 
@@ -106,7 +116,6 @@ def label(ax, x, y, text, color='#212121', size=10, ha='center',
 
 
 def draw_supply_rails(ax, rails_y_top=10.2, show_33v=False):
-    """Draw prominent supply rail strips with background band."""
     spacing = 0.35
     band_h = (spacing * 3 + 0.15) if show_33v else (spacing + 0.25)
     ax.add_patch(mpatches.Rectangle((0, rails_y_top - band_h),
@@ -133,7 +142,6 @@ def draw_supply_rails(ax, rails_y_top=10.2, show_33v=False):
 
 
 def rail_connection(ax, x, y_edge, color, label_text, direction='up'):
-    """Short stub at block edge indicating rail connection."""
     stub_len = 0.2
     if direction == 'up':
         y_end = y_edge + stub_len
@@ -148,6 +156,25 @@ def rail_connection(ax, x, y_edge, color, label_text, direction='up'):
 
 
 # ══════════════════════════════════════════
+# SCHEMDRAW HELPERS
+# ══════════════════════════════════════════
+
+def new_drawing(ax, unit=1.5, fontsize=11):
+    """Create a configured schemdraw Drawing on the given matplotlib axes."""
+    d = schemdraw.Drawing(canvas=ax, show=False)
+    d.config(unit=unit, fontsize=fontsize)
+    return d
+
+
+def finish_drawing(d, ax):
+    """Render schemdraw drawing and restore axes limits."""
+    d.draw()
+    ax.set_xlim(0, PAGE_W)
+    ax.set_ylim(0, PAGE_H)
+    ax.set_aspect('equal')
+
+
+# ══════════════════════════════════════════
 # PAGE 1: POWER PATH
 # ══════════════════════════════════════════
 
@@ -157,13 +184,13 @@ def page_power_path(pdf):
         "Individual phase selection (K3A / K3B / K3C)  |  FORM 3 all phases"
         "  |  FORM 1 commoned 125A")
 
-    # ─── AGX SOURCE (spans both sections) ───
-    agx_x, agx_y, agx_w, agx_h = 0.5, 1.5, 3.0, 8.5
+    # ─── AGX SOURCE ───
+    agx_x, agx_y, agx_w, agx_h = 0.5, 1.5, 2.5, 8.5
     block(ax, agx_x, agx_y, agx_w, agx_h,
           "AGX POWER\nSOURCE", C_ORANGE, '#E65100', 16)
     label(ax, agx_x + agx_w / 2, 5.5,
           "Pacific\nPower\nSource", '#E65100', 13)
-    agx_r = agx_x + agx_w  # 3.5
+    agx_r = agx_x + agx_w  # 3.0
 
     # Phase wire y-positions
     pha_y, phb_y, phc_y = 9.0, 7.3, 5.6
@@ -171,82 +198,118 @@ def page_power_path(pdf):
 
     for ph, y, col in phases:
         dot(ax, agx_r, y, col, 10)
-        label(ax, agx_r - 0.2, y, f"Ph {ph}", col, 12, 'right', 'center', True)
+        label(ax, agx_r - 0.3, y, f"Ph {ph}", col, 12, 'right', 'center', True)
 
     # Neutral
     neut_y = 2.2
     dot(ax, agx_r, neut_y, C_NEUT, 11)
-    label(ax, agx_r - 0.2, neut_y, "N", C_NEUT, 13, 'right', 'center', True)
+    label(ax, agx_r - 0.3, neut_y, "N", C_NEUT, 13, 'right', 'center', True)
 
-    # ─── FORM 3: INDIVIDUAL PHASE CONTACTORS (upper section) ───
-    label(ax, 8.5, 10.2,
+    # ─── FORM 3: SWITCH SYMBOLS ───
+    label(ax, 8.0, 10.2,
           "FORM 3 \u2014 THREE-PHASE  (40A per phase, individually selectable)",
           C_DKBLUE, 16, 'center', 'center', True)
-    label(ax, 8.5, 9.85,
+    label(ax, 8.0, 9.85,
           "Select individually: 'A'  'B'  'C'   |   All three: '3'",
           C_DKBLUE, 12, 'center', 'center', False, True)
 
-    k3x, k3w, k3h = 6.0, 2.8, 1.1
-    ldx, ldw, ldh = 10.5, 2.5, 1.1
+    d = new_drawing(ax, unit=2.0, fontsize=10)
+
+    # Contactor switch positions
+    sw_x = 5.0   # switch start x
+    ld_x = 10.5  # load start x
 
     for ph, y, col in phases:
-        by = y - k3h / 2
-        block(ax, k3x, by, k3w, k3h, f"K3{ph}  (40A NO)", C_LTBLUE, C_BLUE, 14)
-        block(ax, ldx, by, ldw, ldh, f"Load {ph}  (40A)", C_PURPLE, '#7B1FA2', 14)
-        # AGX -> K3x
-        wire(ax, agx_r, y, k3x, y, col, LW_PW)
-        # K3x -> Load
-        wire(ax, k3x + k3w, y, ldx, y, col, LW_PW)
-        # Phase label
-        mx = (agx_r + k3x) / 2
-        label(ax, mx, y + 0.2, f"Phase {ph}", col, 12, 'center', 'bottom', True)
-        # Command label
-        label(ax, k3x + k3w / 2, by + 0.08,
-              f"Cmd: '{ph}'", C_DKBLUE, 11, 'center', 'bottom', False, True)
+        # AGX → switch lead-in
+        wire(ax, agx_r, y, sw_x, y, col, LW_PW)
+        label(ax, (agx_r + sw_x) / 2, y + 0.2, f"Phase {ph}", col, 11,
+              'center', 'bottom', True)
 
-    # ─── FORM 1: COMMONED (lower section) ───
-    label(ax, 8.5, 4.8,
+        # Contactor switch symbol (NO)
+        sw = elm.Switch().at((sw_x, y)).right().color(col)
+        d += sw
+        sw_end_x = sw_x + 2.0  # switch length at unit=2.0
+
+        # Switch → load lead wire
+        wire(ax, sw_end_x, y, ld_x, y, col, LW_PW)
+
+        # Switch label
+        label(ax, sw_x + 1.0, y + 0.35, f"K3{ph}  (40A NO)", col, 11,
+              'center', 'bottom', True)
+        label(ax, sw_x + 1.0, y - 0.35, f"Cmd: '{ph}'", col, 10,
+              'center', 'top', False, True)
+
+    finish_drawing(d, ax)
+
+    # ─── LOAD BLOCKS (external devices) ───
+    ldw, ldh = 2.2, 1.1
+    for ph, y, col in phases:
+        block(ax, ld_x, y - ldh / 2, ldw, ldh,
+              f"Load {ph}  (40A)", C_PURPLE, '#7B1FA2', 13)
+
+    # ─── FORM 1: COMMONED ───
+    label(ax, 8.0, 4.8,
           "FORM 1 \u2014 SINGLE-PHASE  (125A commoned)",
           C_DKRED, 16, 'center', 'center', True)
 
+    d2 = new_drawing(ax, unit=1.8, fontsize=10)
+
     # Junction dots drop from phase wires to FORM 1 path
-    # (spread x-positions apart so vertical wires don't bunch up)
-    k1_x, k1_y, k1_w, k1_h = 6.0, 2.0, 2.8, 2.2
+    k1_sw_x = 6.0
     junctions = [
-        ('A', 4.0, pha_y, C_PH_A, 3.6),
-        ('B', 4.5, phb_y, C_PH_B, 3.0),
-        ('C', 5.0, phc_y, C_PH_C, 2.5),
+        ('A', 3.8, pha_y, C_PH_A, 3.8),
+        ('B', 4.3, phb_y, C_PH_B, 3.2),
+        ('C', 4.8, phc_y, C_PH_C, 2.6),
     ]
     for ph, jx, jy, col, f1y in junctions:
         dot(ax, jx, jy, col)
         wire(ax, jx, jy, jx, f1y, col, LW_PW)
-        wire(ax, jx, f1y, k1_x, f1y, col, LW_PW)
+        wire(ax, jx, f1y, k1_sw_x, f1y, col, LW_PW)
 
-    # K1 combine block
-    block(ax, k1_x, k1_y, k1_w, k1_h, "K1 COMBINE", C_RED_BG, C_DKRED, 14)
-    label(ax, k1_x + k1_w / 2, 2.8,
-          "K1A+K1B+K1C\n(3\u00d7 40A NO)", C_DKRED, 12)
-    label(ax, k1_x + k1_w / 2, 2.1,
-          "Cmd: '1'", C_DKRED, 11, 'center', 'bottom', False, True)
+        # K1 switch symbol for each phase
+        sw = elm.Switch().at((k1_sw_x, f1y)).right().color(col)
+        d2 += sw
+        k1_end = k1_sw_x + 1.8
 
-    # SP_BUS wire to KSP
-    sp_y = 3.0
-    wire(ax, k1_x + k1_w, sp_y, 10.5, sp_y, C_DKRED, LW_PW)
-    label(ax, (k1_x + k1_w + 10.5) / 2, sp_y + 0.18,
-          "SP_BUS", C_DKRED, 11, 'center', 'bottom', True)
+        # All outputs merge at SP_BUS
+        wire(ax, k1_end, f1y, 9.0, f1y, col, LW_PW)
 
-    # KSP block
-    ksp_x, ksp_y, ksp_w, ksp_h = 10.5, 2.3, 2.2, 1.5
-    block(ax, ksp_x, ksp_y, ksp_w, ksp_h, "KSP", '#FFF9C4', '#F57F17', 14)
-    label(ax, ksp_x + ksp_w / 2, 2.7,
-          "125A NO", '#F57F17', 12, 'center', 'center', True)
+    # Labels for K1 group
+    label(ax, k1_sw_x + 0.9, 4.3, "K1 COMBINE", C_DKRED, 12,
+          'center', 'bottom', True)
+    label(ax, k1_sw_x + 0.9, 2.1, "3\u00d7 40A NO\nCmd: '1'", C_DKRED, 10,
+          'center', 'top', False, True)
 
-    # Wire to 1-phase load
-    wire(ax, ksp_x + ksp_w, sp_y, 13.5, sp_y, C_DKRED, LW_PW)
-    block(ax, 13.5, 2.3, 2.5, 1.5, "1\u03A6 LOAD", C_PURPLE, '#7B1FA2', 14)
-    label(ax, 14.75, 2.7, "125A max", '#7B1FA2', 12)
+    # Dashed line indicating mechanical linkage between K1 switches
+    ax.plot([k1_sw_x + 0.9, k1_sw_x + 0.9], [2.6, 3.8], '--',
+            color=C_DKRED, linewidth=1.5, zorder=6)
 
-    # ─── NEUTRAL BUS & RETURN TO ALL LOADS ───
+    # SP_BUS merge point + wire to KSP
+    sp_y = 3.2
+    dot(ax, 9.0, 3.8, C_DKRED, 7)
+    dot(ax, 9.0, 3.2, C_DKRED, 7)
+    dot(ax, 9.0, 2.6, C_DKRED, 7)
+    wire(ax, 9.0, 2.6, 9.0, 3.8, C_DKRED, LW_PW)
+    wire(ax, 9.0, sp_y, 10.0, sp_y, C_DKRED, LW_PW)
+    label(ax, 9.5, sp_y + 0.2, "SP_BUS", C_DKRED, 10, 'center', 'bottom', True)
+
+    # KSP switch
+    ksp_sw = elm.Switch().at((10.0, sp_y)).right().color(C_DKRED)
+    d2 += ksp_sw
+    ksp_end = 10.0 + 1.8
+
+    label(ax, 10.9, sp_y + 0.35, "KSP  (125A NO)", '#F57F17', 11,
+          'center', 'bottom', True)
+
+    finish_drawing(d2, ax)
+
+    # KSP → 1-phase load
+    wire(ax, ksp_end, sp_y, 13.5, sp_y, C_DKRED, LW_PW)
+    block(ax, 13.5, sp_y - 0.75, 2.5, 1.5,
+          "1\u03A6 LOAD", C_PURPLE, '#7B1FA2', 14)
+    label(ax, 14.75, sp_y - 0.3, "125A max", '#7B1FA2', 12)
+
+    # ─── NEUTRAL BUS ───
     ny = 1.0
     wire(ax, agx_r, neut_y, agx_r, ny, C_NEUT, LW_N)
     wire(ax, agx_r, ny, 16.0, ny, C_NEUT, LW_N)
@@ -254,48 +317,40 @@ def page_power_path(pdf):
           "NEUTRAL BUS  (common return \u2014 not switched \u2014 to all loads)",
           C_NEUT, 12, 'center', 'top', True)
 
-    # Neutral is permanent (not switched) - always hard-wired to all loads
-    ld_r = ldx + ldw  # 13.0
-    nr_x = 13.3  # neutral return bus x
+    ld_r = ld_x + ldw  # 12.7
+    nr_x = 13.0
 
-    # Vertical neutral bus from bottom to top
     wire(ax, nr_x, ny, nr_x, pha_y, C_NEUT, LW_N)
     dot(ax, nr_x, ny, C_NEUT, 10)
-    label(ax, nr_x - 0.15, 4.75, "NEUTRAL", C_NEUT, 11,
-          'right', 'center', True)
-    label(ax, nr_x - 0.15, 4.4, "(permanent", C_NEUT, 9,
-          'right', 'center')
-    label(ax, nr_x - 0.15, 4.15, "not switched)", C_NEUT, 9,
-          'right', 'center')
+    label(ax, nr_x - 0.15, 4.75, "NEUTRAL", C_NEUT, 11, 'right', 'center', True)
+    label(ax, nr_x - 0.15, 4.4, "(permanent,", C_NEUT, 9, 'right', 'center')
+    label(ax, nr_x - 0.15, 4.15, "not switched)", C_NEUT, 9, 'right', 'center')
 
-    # Permanent neutral connections from each FORM 3 load
     for ph, y, col in phases:
         wire(ax, ld_r, y, nr_x, y, C_NEUT, LW_N)
         dot(ax, ld_r, y, C_NEUT, 9)
         dot(ax, nr_x, y, C_NEUT, 9)
 
-    # 1-phase load permanent neutral (right side, down to bus)
     f1_nr_x = 16.1
     wire(ax, 16.0, sp_y, f1_nr_x, sp_y, C_NEUT, LW_N)
     wire(ax, f1_nr_x, sp_y, f1_nr_x, ny, C_NEUT, LW_N)
     dot(ax, 16.0, sp_y, C_NEUT, 9)
     dot(ax, f1_nr_x, ny, C_NEUT, 9)
-    label(ax, f1_nr_x, 2.0, "N", C_NEUT, 13, 'center', 'center', True)
 
-    # ─── INTERLOCK & WIRE COLOURS (text labels, no block) ───
-    label(ax, 15.0, 9.5, "INTERLOCK", C_DKRED, 13, 'center', 'center', True)
-    label(ax, 15.0, 9.0,
+    # ─── INTERLOCK & WIRE COLOURS ───
+    label(ax, 15.3, 9.5, "INTERLOCK", C_DKRED, 13, 'center', 'center', True)
+    label(ax, 15.3, 9.0,
           "K3 group and K1+KSP\nare MUTUALLY EXCLUSIVE",
           C_DKRED, 10, 'center', 'center', True)
-    label(ax, 15.0, 8.3,
+    label(ax, 15.3, 8.3,
           "NC aux contacts in\ncoil supply paths\nprevent both energised",
           C_DKRED, 9, 'center', 'center')
 
-    label(ax, 15.0, 7.4, "WIRE COLOURS", '#424242', 12, 'center', 'center', True)
+    label(ax, 15.3, 7.4, "WIRE COLOURS", '#424242', 12, 'center', 'center', True)
     for i, (lbl, c) in enumerate([
         ("Phase A = RED", C_PH_A), ("Phase B = BROWN", C_PH_B),
         ("Phase C = GREY", C_PH_C), ("Neutral = BLACK", C_NEUT)]):
-        label(ax, 15.0, 7.0 - i * 0.35, lbl, c, 11, 'center', 'center', True)
+        label(ax, 15.3, 7.0 - i * 0.35, lbl, c, 11, 'center', 'center', True)
 
     pdf.savefig(fig, bbox_inches='tight')
     plt.close(fig)
@@ -311,151 +366,183 @@ def page_relay_drives(pdf):
         "ESP32 GPIO \u2192 ULN2003A Darlington driver \u2192 contactor coils"
         "  |  Hardware interlock shown")
 
-    # ─── SUPPLY RAILS ───
     y24, y0v = draw_supply_rails(ax, 10.2)
 
-    # Pin y-positions (shared across ESP32, ULN, buses)
     k3a_y, k3b_y, k3c_y = 8.0, 7.2, 6.5
     k1_y, ksp_y = 4.4, 3.6
 
-    # ─── ESP32 ───
-    ex, ey, ew, eh = 0.8, 2.8, 3.0, 6.0
-    block(ax, ex, ey, ew, eh, "ESP32\nDevKit V1", C_GREEN, C_DKGREEN, 15)
-    er = ex + ew  # 3.8
+    d = new_drawing(ax, unit=1.5, fontsize=10)
 
+    # ─── ESP32 IC ───
+    esp = (elm.Ic()
+        .side('L', spacing=0.8, pad=0.4, leadlen=0.8)
+        .side('R', spacing=0.8, pad=0.4, leadlen=0.8)
+        .pin(name='G25', side='right', pin='GPIO25')
+        .pin(name='G26', side='right', pin='GPIO26')
+        .pin(name='G27', side='right', pin='GPIO27')
+        .pin(name='G16', side='right', pin='GPIO16')
+        .pin(name='G17', side='right', pin='GPIO17')
+        .label('ESP32\nDevKit V1'))
+    d += esp.at((0.5, 3.2))
+
+    # ─── ULN2003A IC ───
+    uln = (elm.Ic()
+        .side('L', spacing=0.8, pad=0.4, leadlen=0.8)
+        .side('R', spacing=0.8, pad=0.4, leadlen=0.8)
+        .pin(name='I1', side='left', pin='IN1')
+        .pin(name='I2', side='left', pin='IN2')
+        .pin(name='I3', side='left', pin='IN3')
+        .pin(name='I4', side='left', pin='IN4')
+        .pin(name='I5', side='left', pin='IN5')
+        .side('T', spacing=1.0, pad=0.5, leadlen=0.5)
+        .side('B', spacing=1.0, pad=0.5, leadlen=0.5)
+        .pin(name='COM', side='top', pin='+24V')
+        .pin(name='GND', side='bot', pin='0V')
+        .label('ULN2003A\nDarlington'))
+    d += uln.at((5.5, 3.2))
+
+    finish_drawing(d, ax)
+
+    # ─── Drive wires ESP32 → ULN (matplotlib for control) ───
     drive_pins = [
-        ("GPIO25", "K3A", k3a_y, C_PH_A),
-        ("GPIO26", "K3B", k3b_y, C_PH_B),
-        ("GPIO27", "K3C", k3c_y, C_PH_C),
-        ("GPIO16", "K1",  k1_y,  C_DKRED),
-        ("GPIO17", "KSP", ksp_y, C_DKRED),
+        ("K3A", k3a_y, C_PH_A),
+        ("K3B", k3b_y, C_PH_B),
+        ("K3C", k3c_y, C_PH_C),
+        ("K1",  k1_y,  C_DKRED),
+        ("KSP", ksp_y, C_DKRED),
     ]
-    for gpio, dest, y, col in drive_pins:
-        label(ax, ex + 0.2, y, f"{gpio} \u2192", col, 11,
-              'left', 'center', True, True)
-        dot(ax, er, y, col, 7)
 
-    label(ax, ex + ew / 2, 3.35,
-          "POWERED VIA\nUSB CABLE\nfrom laptop", C_DKGREEN, 10,
-          'center', 'center', True)
-    label(ax, ex + ew / 2, 2.95, "115200 baud", C_DKGREEN, 9)
+    # Get IC anchor positions from the drawn elements
+    esp_pins_x = 3.6   # approx right edge of ESP32 IC
+    uln_l_x = 5.5      # approx left edge of ULN IC
+    uln_r_x = 9.0      # approx right edge of ULN IC
 
-    # ─── ULN2003A ───
-    ux, uy, uw, uh = 5.8, 2.8, 3.0, 6.0
-    block(ax, ux, uy, uw, uh,
-          "ULN2003A\nDARLINGTON\nDRIVER", C_LTTEAL, C_TEAL, 14)
-    ul, ur = ux, ux + uw  # 5.8, 8.8
+    for i, (name, y, col) in enumerate(drive_pins):
+        # Approximate pin y-positions (IC pins are evenly spaced)
+        pin_y = 7.6 - i * 0.8
+        wire(ax, esp_pins_x, pin_y, uln_l_x, pin_y, col, LW_DRV)
+        dot(ax, esp_pins_x, pin_y, col, 5)
+        dot(ax, uln_l_x, pin_y, col, 5)
 
-    channels = [
-        ("IN1", "OUT1", k3a_y, C_PH_A),
-        ("IN2", "OUT2", k3b_y, C_PH_B),
-        ("IN3", "OUT3", k3c_y, C_PH_C),
-        ("IN4", "OUT4", k1_y,  C_DKRED),
-        ("IN5", "OUT5", ksp_y, C_DKRED),
-    ]
-    for inp, outp, y, col in channels:
-        dot(ax, ul, y, col, 7)
-        label(ax, ul + 0.15, y + 0.16, inp, C_TEAL, 11,
-              'left', 'bottom', True, True)
-        dot(ax, ur, y, col, 7)
-        label(ax, ur - 0.15, y + 0.16, outp, C_TEAL, 11,
-              'right', 'bottom', True, True)
-        # Wire: ESP32 -> ULN
-        wire(ax, er, y, ul, y, col, LW_DRV)
-
-    label(ax, ux + uw / 2, 3.15,
-          "COM \u2192 +24V\nGND \u2192 0V", C_TEAL, 11,
-          'center', 'center', True, True)
-
-    # ULN rail connections
-    rail_connection(ax, ux + uw / 2 - 0.4, uy + uh, C_RAIL,
-                    "\u2191 +24V (COM)", 'up')
-    rail_connection(ax, ux + uw / 2 + 0.4, uy, C_RAIL0,
-                    "\u2193 0V (GND)", 'down')
-
-    # Signal flow labels
-    label(ax, (er + ul) / 2, 8.5,
+    label(ax, (esp_pins_x + uln_l_x) / 2, 8.2,
           "3.3V logic", C_DKGREEN, 10, 'center', 'bottom', True)
-    label(ax, (ur + 11.0) / 2, 8.5,
-          "24V switched", C_TEAL, 10, 'center', 'bottom', True)
 
-    # ─── K3 COIL BUS ───
-    ix, iy, iw, ih = 11.0, 6.0, 5.0, 3.2
-    block(ax, ix, iy, iw, ih,
-          "K3 COIL BUS  (via interlock)", C_LTBLUE, C_BLUE, 13)
+    # ─── K3 COIL BUS with interlock chain ───
+    d3 = new_drawing(ax, unit=1.2, fontsize=9)
 
-    label(ax, ix + 0.2, 8.65,
-          "+24V \u2192 K1_NC \u2192 KSP_NC \u2192 K3 BUS",
-          C_BLUE, 11, 'left', 'center', True, True)
-    label(ax, ix + 0.2, 8.3,
-          "If K1 or KSP energised \u2192 K3 coils blocked",
-          C_LGREY, 10, 'left', 'center')
+    # Interlock: +24V → K1_NC → KSP_NC → K3 bus
+    label(ax, 11.5, 9.0, "K3 COIL BUS (via interlock)", C_BLUE, 13,
+          'center', 'center', True)
 
-    # K3 coil labels at wire entry points
-    for lbl, uln_y, col in [
-        ("K3A coil \u2192 ULN OUT1 \u2192 0V", k3a_y, C_PH_A),
-        ("K3B coil \u2192 ULN OUT2 \u2192 0V", k3b_y, C_PH_B),
-        ("K3C coil \u2192 ULN OUT3 \u2192 0V", k3c_y, C_PH_C)]:
-        label(ax, ix + 0.3, uln_y, lbl, col, 10, 'left', 'center', True, True)
-        wire(ax, ur, uln_y, ix, uln_y, col, LW_DRV)
-        dot(ax, ix, uln_y, col, 6)
+    # NC switch symbols in series for interlock
+    intlk_y = 8.5
+    wire(ax, 9.5, intlk_y, 10.0, intlk_y, C_RAIL, LW_DRV)
+    dot(ax, 9.5, intlk_y, C_RAIL, 6)
+    label(ax, 9.5, intlk_y + 0.15, "+24V", C_RAIL, 9, 'center', 'bottom', True)
 
-    rail_connection(ax, ix + 0.5, iy + ih, C_RAIL, "\u2191 +24V", 'up')
+    nc1 = elm.Switch(action='close').at((10.0, intlk_y)).right().color(C_BLUE)
+    d3 += nc1
+    label(ax, 10.6, intlk_y - 0.25, "K1_NC", C_BLUE, 9, 'center', 'top', True)
 
-    # ─── K1/KSP COIL BUS ───
-    jx, jy, jw, jh = 11.0, 2.5, 5.0, 3.0
-    block(ax, jx, jy, jw, jh,
-          "K1/KSP COIL BUS  (via interlock)", C_RED_BG, C_DKRED, 13)
+    wire(ax, 11.2, intlk_y, 11.5, intlk_y, C_BLUE, LW_DRV)
 
-    label(ax, jx + 0.2, 5.05,
-          "+24V \u2192 K3A_NC \u2192 K3B_NC \u2192 K3C_NC \u2192 BUS",
-          C_DKRED, 11, 'left', 'center', True, True)
-    label(ax, jx + 0.2, 4.7,
-          "If any K3 contactor energised \u2192 K1/KSP blocked",
-          C_LGREY, 10, 'left', 'center')
+    nc2 = elm.Switch(action='close').at((11.5, intlk_y)).right().color(C_BLUE)
+    d3 += nc2
+    label(ax, 12.1, intlk_y - 0.25, "KSP_NC", C_BLUE, 9, 'center', 'top', True)
 
-    # K1/KSP coil labels at wire entry points
-    label(ax, jx + 0.3, k1_y,
-          "K1 coil  \u2192 ULN OUT4 \u2192 0V",
-          C_DKRED, 10, 'left', 'center', True, True)
-    label(ax, jx + 0.3, ksp_y,
-          "KSP coil \u2192 ULN OUT5 \u2192 0V",
-          C_DKRED, 10, 'left', 'center', True, True)
+    # K3 coils (inductor symbols)
+    for name, uy, col in [("K3A", 7.8, C_PH_A), ("K3B", 7.2, C_PH_B),
+                           ("K3C", 6.6, C_PH_C)]:
+        wire(ax, uln_r_x, uy, 10.5, uy, col, LW_DRV)
+        coil = elm.Inductor2(loops=3).at((10.5, uy)).right().color(col)
+        d3 += coil
+        label(ax, 11.8, uy + 0.15, f"{name} coil", col, 10,
+              'left', 'bottom', True)
+        # Coil to 0V
+        wire(ax, 12.0, uy, 13.5, uy, C_RAIL0, 1.5)
+        label(ax, 13.5, uy, "0V", C_RAIL0, 9, 'left', 'center', True)
 
-    # Wires from ULN to K1/KSP bus (straight horizontal)
-    wire(ax, ur, k1_y, jx, k1_y, C_DKRED, LW_DRV)
-    dot(ax, jx, k1_y, C_DKRED, 6)
-    wire(ax, ur, ksp_y, jx, ksp_y, C_DKRED, LW_DRV)
-    dot(ax, jx, ksp_y, C_DKRED, 6)
+    # Bus drop from interlock to coils
+    wire(ax, 12.7, intlk_y, 12.7, 6.6, C_BLUE, LW_DRV)
+    label(ax, 12.9, 8.0, "K3 BUS", C_BLUE, 9, 'left', 'center', True)
+    for uy in [7.8, 7.2, 6.6]:
+        dot(ax, 12.7, uy, C_BLUE, 5)
+        wire(ax, 10.5, uy, 10.5, uy, C_BLUE, 1.0)
 
-    rail_connection(ax, jx + 0.5, jy + jh, C_RAIL, "\u2191 +24V", 'up')
+    # ─── K1/KSP COIL BUS with interlock chain ───
+    label(ax, 11.5, 5.6, "K1/KSP COIL BUS (via interlock)", C_DKRED, 13,
+          'center', 'center', True)
 
-    # ─── HARDWARE E-STOP ───
-    block(ax, 0.8, 0.3, 8.0, 2.2,
+    intlk2_y = 5.2
+    wire(ax, 9.5, intlk2_y, 10.0, intlk2_y, C_RAIL, LW_DRV)
+    dot(ax, 9.5, intlk2_y, C_RAIL, 6)
+    label(ax, 9.5, intlk2_y + 0.15, "+24V", C_RAIL, 9, 'center', 'bottom', True)
+
+    nc3 = elm.Switch(action='close').at((10.0, intlk2_y)).right().color(C_DKRED)
+    d3 += nc3
+    label(ax, 10.6, intlk2_y - 0.25, "K3A_NC", C_DKRED, 9, 'center', 'top', True)
+
+    nc4 = elm.Switch(action='close').at((11.5, intlk2_y)).right().color(C_DKRED)
+    d3 += nc4
+    label(ax, 12.1, intlk2_y - 0.25, "K3B_NC", C_DKRED, 9, 'center', 'top', True)
+
+    nc5 = elm.Switch(action='close').at((13.0, intlk2_y)).right().color(C_DKRED)
+    d3 += nc5
+    label(ax, 13.6, intlk2_y - 0.25, "K3C_NC", C_DKRED, 9, 'center', 'top', True)
+
+    wire(ax, 11.2, intlk2_y, 11.5, intlk2_y, C_DKRED, LW_DRV)
+    wire(ax, 12.7, intlk2_y, 13.0, intlk2_y, C_DKRED, LW_DRV)
+
+    # K1 and KSP coils
+    for name, uy, col in [("K1", 4.4, C_DKRED), ("KSP", 3.6, C_DKRED)]:
+        wire(ax, uln_r_x, uy, 10.5, uy, col, LW_DRV)
+        coil = elm.Inductor2(loops=3).at((10.5, uy)).right().color(col)
+        d3 += coil
+        label(ax, 11.8, uy + 0.15, f"{name} coil", col, 10,
+              'left', 'bottom', True)
+        wire(ax, 12.0, uy, 13.5, uy, C_RAIL0, 1.5)
+        label(ax, 13.5, uy, "0V", C_RAIL0, 9, 'left', 'center', True)
+
+    # Bus drop from interlock to K1/KSP coils
+    wire(ax, 14.2, intlk2_y, 14.2, 3.6, C_DKRED, LW_DRV)
+    label(ax, 14.4, 4.6, "K1/KSP\nBUS", C_DKRED, 9, 'left', 'center', True)
+    for uy in [4.4, 3.6]:
+        dot(ax, 14.2, uy, C_DKRED, 5)
+
+    finish_drawing(d3, ax)
+
+    # ─── HARDWARE E-STOP (info panel) ───
+    block(ax, 0.5, 0.3, 8.5, 2.6,
           "HARDWARE E-STOP  (independent of ESP32)",
           C_RED_BG, C_DKRED, 13)
-    label(ax, 1.0, 1.95,
+    label(ax, 0.7, 2.3,
           "NC mushroom-head switch in +24V supply line before BOTH interlock buses",
           C_DKRED, 11, 'left', 'center', True)
-    label(ax, 1.0, 1.55,
+    label(ax, 0.7, 1.85,
           "When pressed: physically cuts +24V to ALL contactor coils",
           '#424242', 10, 'left', 'center')
-    label(ax, 1.0, 1.2,
+    label(ax, 0.7, 1.5,
           "Works even if ESP32 has crashed or firmware is hung",
           '#424242', 10, 'left', 'center')
-    label(ax, 1.0, 0.8,
+    label(ax, 0.7, 1.1,
           "See Page 6 for full mains input and 24V PSU wiring",
           '#E65100', 10, 'left', 'center', True)
 
     # ─── LEGEND ───
-    block(ax, 10.0, 0.3, 6.0, 1.5, "", C_GREY_BG, C_LGREY, 10)
-    label(ax, 10.3, 1.5,
+    block(ax, 10.0, 0.3, 6.0, 2.6, "", C_GREY_BG, C_LGREY, 10)
+    label(ax, 10.3, 2.5,
           "DRIVE SIGNAL FLOW:", '#424242', 10, 'left', 'center', True)
-    label(ax, 10.3, 1.1,
+    label(ax, 10.3, 2.1,
           "ESP32 GPIO (3.3V) \u2192 ULN IN \u2192 ULN OUT (24V sink) \u2192 coil \u2192 0V",
           '#424242', 9.5, 'left', 'center', False, True)
-    label(ax, 10.3, 0.7,
+    label(ax, 10.3, 1.7,
           "ULN2003: 7-ch Darlington, 500mA/ch, internal flyback diodes",
+          C_LGREY, 9, 'left', 'center')
+    label(ax, 10.3, 1.2,
+          "NC switches shown CLOSED (normal state: interlocks allowing operation)",
+          C_BLUE, 9, 'left', 'center', True)
+    label(ax, 10.3, 0.8,
+          "When contactor energises, its NC aux opens \u2192 blocks opposing bus",
           C_LGREY, 9, 'left', 'center')
 
     pdf.savefig(fig, bbox_inches='tight')
@@ -472,142 +559,90 @@ def page_feedback(pdf):
         "5\u00d7 PC817 (4-pin DIP)  |  Isolated contactor state sensing"
         "  |  24V \u2192 3.3V level shift")
 
-    # ─── SUPPLY RAILS (with 3.3V) ───
     y24, y0v, y33 = draw_supply_rails(ax, 10.2, show_33v=True)
 
-    # Feedback pin y-positions (spread out across full page height)
-    fb_ya, fb_yb, fb_yc = 8.0, 6.8, 5.6
-    fb_yk1, fb_yksp = 4.0, 2.8
+    d = new_drawing(ax, unit=1.3, fontsize=9)
 
-    # ─── ESP32 FEEDBACK INPUTS (left side) ───
-    ex, ey_, ew, eh = 0.5, 1.8, 3.5, 7.0
-    block(ax, ex, ey_, ew, eh,
-          "ESP32\nFEEDBACK\nINPUTS", C_GREEN, C_DKGREEN, 15)
-    er_fb = ex + ew  # 4.0
-
-    fb_pins = [
-        ("GPIO32 \u2192 K3A", fb_ya, C_PH_A),
-        ("GPIO33 \u2192 K3B", fb_yb, C_PH_B),
-        ("GPIO34 \u2192 K3C", fb_yc, C_PH_C),
-        ("GPIO36 \u2192 K1",  fb_yk1, C_DKRED),
-        ("GPIO39 \u2192 KSP", fb_yksp, C_DKRED),
+    # 5 optocoupler circuits stacked vertically — 1.7 unit spacing avoids overlap
+    opto_data = [
+        ("PC817-1", "K3A", "GPIO32", 8.5, C_PH_A),
+        ("PC817-2", "K3B", "GPIO33", 6.8, C_PH_B),
+        ("PC817-3", "K3C", "GPIO34", 5.1, C_PH_C),
+        ("PC817-4", "K1",  "GPIO36", 3.4, C_DKRED),
+        ("PC817-5", "KSP", "GPIO39", 1.7, C_DKRED),
     ]
-    for pin_name, y, col in fb_pins:
-        label(ax, ex + 0.2, y, pin_name, col, 12,
-              'left', 'center', True, True)
-        dot(ax, er_fb, y, col, 7)
 
-    label(ax, ex + ew / 2, 2.2,
-          "GPIO34,36,39:\ninput-only pins\n(no internal pull-up)\next 10k\u03A9 to 3.3V",
-          C_LGREY, 10)
+    for pc_name, contactor, gpio, cy, col in opto_data:
+        # ─── Optocoupler symbol ───
+        opto = elm.Optocoupler().at((6.5, cy)).anchor('anode')
+        d += opto
 
-    # ─── OPTOCOUPLER BLOCK (centre) ───
-    ox, oy, ow, oh = 5.5, 1.8, 5.5, 7.0
-    block(ax, ox, oy, ow, oh,
-          "5\u00d7 PC817 OPTOCOUPLERS  (4-pin DIP)", C_ORANGE, '#E65100', 14)
+        # ─── 24V side (left): +24V → 4.7kΩ → anode ───
+        d += elm.Resistor().at((4.0, cy)).right().label('4.7k\u03A9', loc='top').color(col)
+        res_end_x = 4.0 + 1.3  # unit=1.3
+        wire(ax, res_end_x, cy, 6.5, cy, col, LW_W)
 
-    # ── 24V SIDE: AUX contact switches the LED forward bias ──
-    label(ax, ox + 0.3, 8.0,
-          "24V SIDE \u2014 AUX CONTACT SWITCHES LED BIAS:",
-          '#E65100', 13, 'left', 'center', True)
+        # +24V connection stub
+        wire(ax, 3.2, cy, 4.0, cy, C_RAIL, LW_W)
+        dot(ax, 3.2, cy, C_RAIL, 5)
+        label(ax, 3.0, cy, "+24V", C_RAIL, 8, 'right', 'center', True)
 
-    label(ax, ox + 0.3, 7.5,
-          "+24V \u2192 4.7k\u03A9 \u2192 Pin 1 (Anode) \u2192 [LED] \u2192 Pin 2 (Cathode)",
-          '#424242', 12, 'left', 'center', False, True)
-    label(ax, ox + 0.3, 7.05,
-          "Pin 2 \u2192 AUX NO contact \u2192 0V",
-          '#424242', 12, 'left', 'center', False, True)
-    label(ax, ox + 0.3, 6.6,
-          "AUX CLOSED = circuit complete = LED forward biased ON",
-          C_DKGREEN, 11, 'left', 'center', True)
-    label(ax, ox + 0.3, 6.2,
-          "AUX OPEN   = circuit broken  = LED has no bias   OFF",
-          C_DKRED, 11, 'left', 'center', True)
+        # cathode → AUX switch → 0V
+        cath_y = cy - 0.75  # cathode offset (from anchor data)
+        wire(ax, 6.05, cath_y, 4.5, cath_y, col, LW_W)
+        sw = elm.Switch(action='close').at((3.2, cath_y)).right().color(col)
+        d += sw
+        label(ax, 3.8, cath_y - 0.25, f"{contactor}\nAUX(NO)", col, 8,
+              'center', 'top', True)
+        wire(ax, 2.5, cath_y, 3.2, cath_y, C_RAIL0, LW_W)
+        dot(ax, 2.5, cath_y, C_RAIL0, 5)
+        label(ax, 2.3, cath_y, "0V", C_RAIL0, 8, 'right', 'center', True)
 
-    # ── 3.3V SIDE: ESP32 GPIO passively reads the output ──
-    label(ax, ox + 0.3, 5.5,
-          "3.3V SIDE \u2014 ESP32 GPIO READS OUTPUT (passive):",
-          '#E65100', 13, 'left', 'center', True)
+        # ─── 3.3V side (right): 3.3V → 10kΩ → collector junction → GPIO ───
+        coll_y = cy - 0.025  # collector offset
+        coll_x = 6.5 + 2.4   # collector x position
 
-    label(ax, ox + 0.3, 5.0,
-          "3.3V \u2192 10k\u03A9 pull-up \u2192 Pin 4 (Collector) \u2192 ESP32 GPIO",
-          '#424242', 12, 'left', 'center', False, True)
-    label(ax, ox + 0.3, 4.55,
-          "Pin 3 (Emitter) \u2192 GND (shared 0V)",
-          '#424242', 12, 'left', 'center', False, True)
-    label(ax, ox + 0.3, 4.1,
-          "LED ON  \u2192 phototransistor conducts \u2192 Pin4 \u2248 0V \u2192 GPIO LOW",
-          C_DKGREEN, 11, 'left', 'center', True, True)
-    label(ax, ox + 0.3, 3.7,
-          "LED OFF \u2192 phototransistor off \u2192 pull-up \u2192 Pin4 = 3.3V \u2192 GPIO HIGH",
-          C_DKRED, 11, 'left', 'center', True, True)
-    label(ax, ox + 0.3, 3.3,
-          "GPIO is INPUT only \u2014 does not drive anything",
-          C_LGREY, 10, 'left', 'center')
+        # 10kΩ pull-up from 3.3V to collector
+        wire(ax, coll_x, coll_y, 10.0, coll_y, col, LW_W)
+        d += elm.Resistor().at((10.0, coll_y)).right().label('10k\u03A9', loc='top').color(col)
+        res2_end = 10.0 + 1.3
+        wire(ax, res2_end, coll_y, 12.5, coll_y, C_33V, LW_W)
+        dot(ax, 12.5, coll_y, C_33V, 5)
+        label(ax, 12.7, coll_y, "3.3V", C_33V, 8, 'left', 'center', True)
 
-    # Per-opto connection table (keep inside block, bottom is y=1.8)
-    label(ax, ox + 0.3, 2.85,
-          "ALL 5 IDENTICAL \u2014 CONNECTIONS:",
-          '#E65100', 11, 'left', 'center', True)
-    opto_map = [
-        ("1: K3A AUX(NO) \u2192 GPIO32"),
-        ("2: K3B AUX(NO) \u2192 GPIO33"),
-        ("3: K3C AUX(NO) \u2192 GPIO34"),
-        ("4: K1  AUX(NO) \u2192 GPIO36"),
-        ("5: KSP AUX(NO) \u2192 GPIO39"),
-    ]
-    for i, txt in enumerate(opto_map):
-        label(ax, ox + 0.3, 2.55 - i * 0.18,
-              f"PC817-{txt}",
-              '#424242', 9, 'left', 'center', False, True)
+        # GPIO tap from collector junction
+        dot(ax, 10.0, coll_y, col, 5)
+        wire(ax, 10.0, coll_y, 10.0, coll_y + 0.4, col, LW_W)
+        label(ax, 10.0, coll_y + 0.5, gpio, col, 9, 'center', 'bottom', True)
 
-    opl = ox       # 5.5
-    opr = ox + ow  # 11.0
+        # emitter → 0V/GND (placed directly at emitter to save vertical space)
+        emit_y = cy - 0.725
+        emit_x = coll_x
+        d += elm.Ground().at((emit_x, emit_y)).color(col)
 
-    # Wires from ESP32 to optos (Pin 4 / 3.3V side)
-    for pin_name, y, col in fb_pins:
-        wire(ax, er_fb, y, opl, y, col, LW_W)
+        # Label
+        label(ax, 7.5, cy + 0.3, pc_name, '#E65100', 9, 'center', 'bottom', True)
 
-    label(ax, (er_fb + opl) / 2, 8.3,
-          "3.3V logic (Pin 4 collector)", C_DKGREEN, 11,
-          'center', 'bottom', True)
+    finish_drawing(d, ax)
 
-    # Rail stubs on opto block
-    rail_connection(ax, opr - 0.5, oy + oh, C_RAIL,
-                    "\u2191 +24V (4.7k\u03A9 \u2192 Pin1 anode)", 'up')
-    rail_connection(ax, ox + 2.5, oy, C_RAIL0,
-                    "\u2193 0V (Pin2 cathode return + Pin3 emitter)", 'down')
-    rail_connection(ax, opl + 0.5, oy + oh, C_33V,
-                    "\u2191 3.3V (10k\u03A9 pull-up \u2192 Pin4)", 'up')
-
-    # ─── CONTACTOR AUX CONTACTS (right side) ───
-    cx, cy, cw, ch = 12.5, 1.8, 3.5, 7.0
-    block(ax, cx, cy, cw, ch,
-          "CONTACTOR\nAUX CONTACTS\n(NO)", C_LTBLUE, C_BLUE, 14)
-    cl = cx  # 12.5
-
-    aux_contacts = [
-        ("K3A AUX (NO)", fb_ya, C_PH_A),
-        ("K3B AUX (NO)", fb_yb, C_PH_B),
-        ("K3C AUX (NO)", fb_yc, C_PH_C),
-        ("K1  AUX (NO)", fb_yk1, C_DKRED),
-        ("KSP AUX (NO)", fb_yksp, C_DKRED),
-    ]
-    for name, y, col in aux_contacts:
-        label(ax, cx + 0.2, y, name, col, 12, 'left', 'center', True, True)
-        dot(ax, cl, y, col, 7)
-
-    label(ax, cx + cw / 2, 2.2,
-          "LADN11 blocks\n(1NO + 1NC each)\n\nNO = feedback\nNC = interlock\n(see Page 2)",
-          C_LGREY, 10)
-
-    # Wires from optos to aux contacts (Pin 2 / 24V side)
-    for name, y, col in aux_contacts:
-        wire(ax, opr, y, cl, y, col, LW_W)
-
-    label(ax, (opr + cl) / 2, 8.3,
-          "24V side (Pin 2 cathode)", '#E65100', 11,
-          'center', 'bottom', True)
+    # ─── LOGIC NOTES ───
+    block(ax, 13.5, 1.5, 3.0, 7.8, "LOGIC", C_GREY_BG, C_LGREY, 12)
+    label(ax, 13.7, 8.6,
+          "AUX CLOSED:", C_DKGREEN, 10, 'left', 'center', True)
+    label(ax, 13.7, 8.2,
+          "LED biased ON\n\u2192 opto conducts\n\u2192 GPIO reads LOW",
+          C_DKGREEN, 9, 'left', 'center')
+    label(ax, 13.7, 7.2,
+          "AUX OPEN:", C_DKRED, 10, 'left', 'center', True)
+    label(ax, 13.7, 6.8,
+          "LED has no bias\n\u2192 opto off\n\u2192 pull-up \u2192 HIGH",
+          C_DKRED, 9, 'left', 'center')
+    label(ax, 13.7, 5.8,
+          "GPIO is INPUT\nonly \u2014 does not\ndrive anything",
+          C_LGREY, 9, 'left', 'center')
+    label(ax, 13.7, 4.6,
+          "LADN11 blocks:\nNO = feedback\nNC = interlock\n(see Page 2)",
+          C_LGREY, 9, 'left', 'center')
 
     pdf.savefig(fig, bbox_inches='tight')
     plt.close(fig)
@@ -623,90 +658,114 @@ def page_leds_estop(pdf):
         "3\u00d7 status LEDs with calculated resistors"
         "  |  Software + hardware E-stop")
 
-    # ─── STATUS LEDs (upper section, full width) ───
-    lx, ly, lw_, lh = 0.5, 5.5, 15.5, 4.5
-    block(ax, lx, ly, lw_, lh, "STATUS LEDs", C_YELLOW, '#F57F17', 16)
+    # ─── STATUS LEDs (upper section) ───
+    label(ax, 8.0, 10.2,
+          "STATUS LEDs", '#F57F17', 18, 'center', 'center', True)
+    label(ax, 8.0, 9.85,
+          "ESP32 3.3V GPIO \u2192 resistor \u2192 LED \u2192 GND",
+          '#F57F17', 12, 'center', 'center', False, True)
 
-    # LED circuit details - well spaced
-    label(ax, 0.8, 9.2,
-          "LED CIRCUITS  (ESP32 3.3V GPIO \u2192 resistor \u2192 LED \u2192 0V / GND):",
-          '#F57F17', 13, 'left', 'center', True)
+    d = new_drawing(ax, unit=2.0, fontsize=11)
 
     led_data = [
-        ("GREEN", "GPIO18", "330\u03A9", "2.0V", "3.9mA",
-         "ON = any FORM3 phase active (K3A/K3B/K3C)", C_DKGREEN),
-        ("BLUE",  "GPIO19", "100\u03A9", "3.0V", "3.0mA",
+        ("GREEN", "GPIO18", "330\u03A9", "green", 9.0,
+         "Vf\u22482.0V  I=(3.3\u22122.0)/330=3.9mA",
+         "ON = any FORM3 phase active", C_DKGREEN),
+        ("BLUE",  "GPIO19", "100\u03A9", "blue", 7.5,
+         "Vf\u22483.0V  I=(3.3\u22123.0)/100=3.0mA",
          "ON = FORM1 active (K1+KSP)", C_DKBLUE),
-        ("RED",   "GPIO21", "330\u03A9", "1.8V", "4.5mA",
+        ("RED",   "GPIO21", "330\u03A9", "red", 6.0,
+         "Vf\u22481.8V  I=(3.3\u22121.8)/330=4.5mA",
          "BLINK = fault  |  SOLID = E-stop", C_DKRED),
     ]
 
-    for i, (colour, gpio, res, vf, current, note, col) in enumerate(led_data):
-        by = 8.5 - i * 1.2
-        label(ax, 0.8, by,
-              f"{colour} LED:", col, 14, 'left', 'center', True)
-        label(ax, 0.8, by - 0.4,
-              f"{gpio} \u2192 {res} \u2192 {colour} LED \u2192 0V (GND)",
-              col, 12, 'left', 'center', True, True)
-        label(ax, 0.8, by - 0.75,
-              f"Vf \u2248 {vf}   I = (3.3V \u2212 {vf}) / {res} = {current}",
-              '#424242', 11, 'left', 'center', False, True)
-        label(ax, 8.5, by - 0.4,
-              note, C_LGREY, 11, 'left', 'center')
+    for colour, gpio, res, fill, cy, calc, note, col in led_data:
+        # GPIO label
+        label(ax, 1.5, cy, gpio, col, 12, 'right', 'center', True, True)
 
-    # GND connection
-    rail_connection(ax, 1.5, ly, C_RAIL0,
-                    "\u2193 0V (GND \u2014 LED cathode return)", 'down')
+        # GPIO dot → resistor → LED → ground
+        d += elm.Dot(open=True).at((2.0, cy)).color(col)
+        d += elm.Line().right().length(0.5).color(col)
+        d += elm.Resistor().right().label(res, loc='top').color(col)
+        d += elm.LED(fill=fill).right().label(f"{colour}", loc='top').color(col)
+        d += elm.Line().down().length(0.5).color(col)
+        d += elm.Ground().color(col)
+
+        # Annotations
+        label(ax, 8.5, cy, calc, '#424242', 10, 'left', 'center', False, True)
+        label(ax, 12.0, cy, note, C_LGREY, 10, 'left', 'center')
+
+    finish_drawing(d, ax)
+
+    # ─── Divider ───
+    wire(ax, 0.5, 5.2, 16.0, 5.2, C_LGREY, 1.5)
 
     # ─── E-STOP (lower section) ───
-    sx, sy, sw, sh = 0.5, 0.5, 15.5, 4.5
-    block(ax, sx, sy, sw, sh,
-          "E-STOP  (two independent systems)", C_RED_BG, C_DKRED, 16)
+    label(ax, 8.0, 4.9,
+          "E-STOP  (two independent systems)", C_DKRED, 18,
+          'center', 'center', True)
 
-    # Software E-stop (left side)
-    label(ax, 0.8, 4.2,
-          "SOFTWARE E-STOP:", C_DKRED, 14, 'left', 'center', True)
-    label(ax, 0.8, 3.7,
-          "ESP32 GPIO35 \u2190 NO pushbutton \u2192 GND",
-          '#424242', 12, 'left', 'center', False, True)
-    label(ax, 0.8, 3.25,
-          "External 10k\u03A9 pull-up to 3.3V (GPIO35 is input-only)",
-          '#424242', 11, 'left', 'center', False, True)
-    label(ax, 0.8, 2.8,
-          "Press button \u2192 GPIO reads LOW \u2192 firmware disables all outputs",
-          '#424242', 11, 'left', 'center')
-    label(ax, 0.8, 2.35,
+    d2 = new_drawing(ax, unit=1.8, fontsize=10)
+
+    # ── SOFTWARE E-STOP (left side) ──
+    label(ax, 4.0, 4.4, "SOFTWARE E-STOP", C_DKRED, 14,
+          'center', 'center', True)
+
+    # 3.3V → 10kΩ pull-up → junction → GPIO35
+    label(ax, 1.0, 3.5, "3.3V", C_33V, 11, 'right', 'center', True)
+    d2 += elm.Dot(open=True).at((1.3, 3.5)).color(C_33V)
+    d2 += elm.Resistor().right().label('10k\u03A9\npull-up', loc='top').color(C_WIRE)
+    # Junction point
+    d2 += elm.Dot().color(C_WIRE)
+    junc_x = 1.3 + 1.8  # after resistor
+
+    # Junction → GPIO35
+    d2 += elm.Line().right().length(1.5).color(C_WIRE)
+    label(ax, junc_x + 1.8, 3.5, "GPIO35", C_DKRED, 11, 'left', 'center', True, True)
+
+    # Junction → button → GND (downward)
+    d2 += elm.Button().at((junc_x, 3.5)).down().label('NO\npushbutton', loc='right').color(C_DKRED)
+    d2 += elm.Ground().color(C_DKRED)
+
+    label(ax, 1.5, 1.5,
+          "Press \u2192 GPIO reads LOW \u2192 firmware disables all outputs",
+          '#424242', 10, 'left', 'center')
+    label(ax, 1.5, 1.1,
           "Send '0' command to reset from ESTOP state",
-          C_LGREY, 10, 'left', 'center')
+          C_LGREY, 9, 'left', 'center')
 
-    # Hardware E-stop (right side)
-    label(ax, 8.5, 4.2,
-          "HARDWARE E-STOP:", C_DKRED, 14, 'left', 'center', True)
-    label(ax, 8.5, 3.7,
-          "NC mushroom-head pushbutton in +24V supply line",
-          '#424242', 12, 'left', 'center', False, True)
-    label(ax, 8.5, 3.25,
-          "Positioned AFTER PSU, BEFORE both interlock buses",
-          '#424242', 11, 'left', 'center')
-    label(ax, 8.5, 2.8,
+    # ── HARDWARE E-STOP (right side) ──
+    label(ax, 12.0, 4.4, "HARDWARE E-STOP", C_DKRED, 14,
+          'center', 'center', True)
+
+    # +24V → NC mushroom-head → +24V RAIL
+    label(ax, 8.5, 3.5, "+24V\n(from PSU)", C_RAIL, 10,
+          'right', 'center', True)
+    d2 += elm.Dot(open=True).at((9.0, 3.5)).color(C_RAIL)
+    d2 += elm.Line().right().length(0.5).color(C_RAIL)
+    d2 += elm.Button(nc=True).right().label('NC mushroom-head\nE-STOP', loc='top').color(C_DKRED)
+    d2 += elm.Line().right().length(0.5).color(C_RAIL)
+    label(ax, 13.5, 3.5, "+24V RAIL\n(to interlock\nbuses)", C_RAIL, 10,
+          'left', 'center', True)
+
+    finish_drawing(d2, ax)
+
+    label(ax, 9.0, 1.5,
           "When pressed: physically cuts +24V to ALL contactor coils",
-          C_DKRED, 11, 'left', 'center', True)
-    label(ax, 8.5, 2.35,
+          C_DKRED, 10, 'left', 'center', True)
+    label(ax, 9.0, 1.1,
           "Works even if ESP32 has crashed or firmware is hung",
-          '#424242', 11, 'left', 'center')
-    label(ax, 8.5, 1.9,
+          '#424242', 10, 'left', 'center')
+    label(ax, 9.0, 0.7,
           "Twist to release, then send '0' to clear firmware state",
-          C_LGREY, 10, 'left', 'center')
-
-    # Divider line between SW and HW sections
-    wire(ax, 8.2, 4.5, 8.2, 1.0, C_LGREY, 1.0)
+          C_LGREY, 9, 'left', 'center')
 
     pdf.savefig(fig, bbox_inches='tight')
     plt.close(fig)
 
 
 # ══════════════════════════════════════════
-# PAGE 4: PINOUT TABLE + COMMANDS + BOM
+# PAGE 5: PINOUT TABLE + COMMANDS + BOM
 # ══════════════════════════════════════════
 
 def page_pinout_bom(pdf):
@@ -764,7 +823,7 @@ def page_pinout_bom(pdf):
             label(ax, cx_ + 0.08, ry + 0.1, val, fc, 10,
                   'left', 'center', j < 2, True)
 
-    # ─── SERIAL COMMANDS (below GPIO table) ───
+    # ─── SERIAL COMMANDS ───
     cmd_y_label = 4.6
     label(ax, 0.5, cmd_y_label,
           "SERIAL COMMANDS (115200 baud, 8N1)",
@@ -859,7 +918,6 @@ def page_pinout_bom(pdf):
         (bom_x + 5.1, 1.2),
     ]
 
-    # BOM header row
     for hdr, (cx_, w) in zip(
         ["QTY", "DESCRIPTION", "FOR", "PRICE"], bom_col_defs):
         ax.add_patch(mpatches.Rectangle(
@@ -868,7 +926,6 @@ def page_pinout_bom(pdf):
         label(ax, cx_ + 0.08, bom_ty + 0.08, hdr, 'white', 10,
               'left', 'center', True, True)
 
-    # BOM rows
     for i, (qty, desc, usage, price) in enumerate(bom_items):
         ry = bom_ty - (i + 1) * bom_row_h
         if ry < 0.5:
@@ -887,7 +944,6 @@ def page_pinout_bom(pdf):
         label(ax, bom_x + 5.18, ry + 0.08, price,
               '#424242', 9.5, 'left', 'center', True)
 
-    # Budget estimate
     label(ax, bom_x, 4.3,
           "TOTAL ESTIMATE:  ~\u00a3670 - \u00a31,120 (ex VAT)",
           C_DKGREEN, 12, 'left', 'center', True)
@@ -897,7 +953,7 @@ def page_pinout_bom(pdf):
 
 
 # ══════════════════════════════════════════
-# PAGE 5: MAINS INPUT & 24V PSU
+# PAGE 6: MAINS INPUT & 24V PSU
 # ══════════════════════════════════════════
 
 def page_mains_psu(pdf):
@@ -906,100 +962,104 @@ def page_mains_psu(pdf):
         "230VAC mains input  |  DIN-rail PSU  |  Hardware E-stop"
         "  |  Earth bonding")
 
-    # Three blocks across the top, safety block at bottom.
-    # All wires routed through the 1.5-unit gaps between blocks.
+    # ─── POWER CHAIN (upper section) ───
+    label(ax, 8.0, 10.2,
+          "MAINS TO 24V POWER CHAIN", C_TEAL, 16, 'center', 'center', True)
 
-    # ─── BLOCK 1: MAINS INPUT ───
-    bm_x, bm_y, bm_w, bm_h = 0.5, 6.2, 4.5, 3.8
-    block(ax, bm_x, bm_y, bm_w, bm_h,
-          "MAINS INPUT", C_ORANGE, '#E65100', 15)
-    label(ax, bm_x + bm_w / 2, 9.2,
-          "IEC C14 panel-mount inlet", '#E65100', 11, 'center', 'center', True)
-    label(ax, bm_x + bm_w / 2, 8.7,
-          "230VAC 50Hz", '#424242', 11, 'center', 'center')
-    label(ax, bm_x + bm_w / 2, 8.2,
-          "Integral fuse holder (6A)", '#424242', 10, 'center', 'center')
-    label(ax, bm_x + bm_w / 2, 7.6,
-          "6A DIN-rail MCB (Type B)\nfor overcurrent protection\nand isolation",
-          '#424242', 10, 'center', 'center')
-    label(ax, bm_x + bm_w / 2, 6.7,
-          "IEC C13 mains cable\nfrom UK 13A plug (3A fuse)",
-          C_LGREY, 9, 'center', 'center')
-    bm_r = bm_x + bm_w  # 5.0
+    d = new_drawing(ax, unit=2.0, fontsize=10)
 
-    # ─── BLOCK 2: 24V DIN-RAIL PSU ───
-    bp_x, bp_y, bp_w, bp_h = 6.5, 6.2, 4.3, 3.8
-    block(ax, bp_x, bp_y, bp_w, bp_h,
-          "24V DIN-RAIL PSU", C_LTTEAL, C_TEAL, 15)
-    label(ax, bp_x + bp_w / 2, 9.2,
-          "Mean Well HDR-100-24", C_TEAL, 12, 'center', 'center', True)
-    label(ax, bp_x + bp_w / 2, 8.7,
-          "Input: 85\u2013264VAC (universal)", '#424242', 10, 'center', 'center')
-    label(ax, bp_x + bp_w / 2, 8.25,
-          "Output: 24VDC / 5A", C_TEAL, 12, 'center', 'center', True)
-    label(ax, bp_x + bp_w / 2, 7.8,
-          "120W continuous", '#424242', 10, 'center', 'center')
-    label(ax, bp_x + bp_w / 2, 7.3,
-          "DIN-rail mount (TS-35)", C_LGREY, 10, 'center', 'center')
-    label(ax, bp_x + bp_w / 2, 6.8,
-          "Terminals: L, N, PE, +V, \u2212V", '#424242', 9, 'center', 'center',
-          False, True)
-    bp_r = bp_x + bp_w  # 10.8
+    # IEC inlet → Fuse → MCB → PSU → E-stop → +24V rail
+    chain_y = 8.5
 
-    # ─── BLOCK 3: E-STOP & OUTPUT RAILS ───
-    be_x, be_y, be_w, be_h = 12.3, 6.2, 3.7, 3.8
-    block(ax, be_x, be_y, be_w, be_h,
-          "E-STOP &\nOUTPUT RAILS", C_RED_BG, C_DKRED, 14)
-    label(ax, be_x + be_w / 2, 9.0,
-          "HW E-STOP", C_DKRED, 12, 'center', 'center', True)
-    label(ax, be_x + be_w / 2, 8.55,
-          "NC mushroom-head\npanel mount (red)", C_DKRED, 10,
-          'center', 'center')
-    label(ax, be_x + be_w / 2, 7.9,
-          "Physically cuts +24V\nto ALL coils", '#424242', 10,
-          'center', 'center')
-    label(ax, be_x + be_w / 2, 7.2,
-          "+24VDC RAIL", C_RAIL, 12, 'center', 'center', True)
-    label(ax, be_x + be_w / 2, 6.85,
-          "To interlock buses\n\u2192 contactor coils", '#424242', 9,
-          'center', 'center')
-    label(ax, be_x + be_w / 2, 6.35,
-          "0V RAIL (GND)", C_RAIL0, 12, 'center', 'center', True)
+    # IEC C14 inlet (terminal)
+    label(ax, 0.5, chain_y + 0.5, "230VAC MAINS INPUT", '#E65100', 12,
+          'left', 'bottom', True)
+    label(ax, 0.5, chain_y, "IEC C14\npanel inlet", '#E65100', 10,
+          'left', 'center')
+    d += elm.Dot(open=True).at((2.5, chain_y)).color('#8B4513')
+    label(ax, 2.3, chain_y + 0.15, "L", '#8B4513', 10, 'right', 'bottom', True)
 
-    # ─── WIRES BETWEEN BLOCKS (all in the 1.5-unit gaps) ───
+    # Fuse
+    d += elm.Fuse().right().label('6A fuse', loc='top').color('#8B4513')
 
-    # Mains → PSU: arrow in the gap
-    wire_y1 = 8.5
-    wire(ax, bm_r, wire_y1, bp_x, wire_y1, '#8B4513', LW_PW)
-    dot(ax, bm_r, wire_y1, '#8B4513', 8)
-    dot(ax, bp_x, wire_y1, '#8B4513', 8)
-    label(ax, (bm_r + bp_x) / 2, wire_y1 + 0.18,
-          "L + N + PE", '#8B4513', 10, 'center', 'bottom', True)
-    label(ax, (bm_r + bp_x) / 2, wire_y1 - 0.18,
-          "(via MCB for L)", C_LGREY, 8, 'center', 'top')
+    # MCB (breaker)
+    d += elm.Breaker().right().label('MCB 6A\nType B', loc='top').color('#8B4513')
 
-    # PSU → E-STOP: +24V output in the gap
-    wire_y2 = 8.5
-    wire(ax, bp_r, wire_y2, be_x, wire_y2, C_RAIL, LW_PW)
-    dot(ax, bp_r, wire_y2, C_RAIL, 8)
-    dot(ax, be_x, wire_y2, C_RAIL, 8)
-    label(ax, (bp_r + be_x) / 2, wire_y2 + 0.18,
-          "+V (24VDC)", C_RAIL, 10, 'center', 'bottom', True)
+    # PSU as IC
+    psu = (elm.Ic()
+        .side('L', spacing=0.6, pad=0.3, leadlen=0.5)
+        .side('R', spacing=0.6, pad=0.3, leadlen=0.5)
+        .pin(name='Lin', side='left', pin='L')
+        .pin(name='Nin', side='left', pin='N')
+        .pin(name='PEin', side='left', pin='PE')
+        .pin(name='Vp', side='right', pin='+V')
+        .pin(name='Vm', side='right', pin='\u2212V')
+        .label('HDR-100-24\n24VDC 5A'))
+    d += psu.at((8.0, chain_y - 1.5))
 
-    # PSU → 0V rail: second wire in the gap
-    wire_y3 = 7.0
-    wire(ax, bp_r, wire_y3, be_x, wire_y3, C_RAIL0, LW_PW)
-    dot(ax, bp_r, wire_y3, C_RAIL0, 8)
-    dot(ax, be_x, wire_y3, C_RAIL0, 8)
-    label(ax, (bp_r + be_x) / 2, wire_y3 + 0.18,
-          "\u2212V (0V)", C_RAIL0, 10, 'center', 'bottom', True)
+    finish_drawing(d, ax)
 
-    # ─── BLOCK 4: EARTH BONDING & SAFETY ───
-    bs_x, bs_y, bs_w, bs_h = 0.5, 0.5, 15.5, 5.0
-    block(ax, bs_x, bs_y, bs_w, bs_h,
+    # Wire from breaker end to PSU L input (approximate)
+    wire(ax, 6.5, chain_y, 7.5, chain_y, '#8B4513', LW_PW)
+    # Show the PSU connections with labels
+    label(ax, 8.0, chain_y + 1.2, "24V DIN-RAIL PSU", C_TEAL, 14,
+          'left', 'bottom', True)
+    label(ax, 8.0, chain_y + 0.8, "Mean Well HDR-100-24", C_TEAL, 10,
+          'left', 'bottom')
+    label(ax, 8.2, chain_y - 0.2, "Input: 85\u2013264VAC", '#424242', 9,
+          'left', 'center')
+    label(ax, 8.2, chain_y - 0.5, "Output: 24VDC / 5A (120W)", C_TEAL, 9,
+          'left', 'center', True)
+
+    # +V output → E-stop → +24V rail
+    d2 = new_drawing(ax, unit=1.8, fontsize=10)
+
+    psu_r = 11.5  # approx right edge of PSU IC
+    estop_y = 8.0
+    wire(ax, psu_r, estop_y, 12.0, estop_y, C_RAIL, LW_PW)
+    label(ax, psu_r + 0.1, estop_y + 0.15, "+V", C_RAIL, 9, 'left', 'bottom', True)
+
+    d2 += elm.Button(nc=True).at((12.0, estop_y)).right().label('HW E-STOP\n(NC)', loc='top').color(C_DKRED)
+
+    finish_drawing(d2, ax)
+
+    estop_end = 12.0 + 1.8
+    wire(ax, estop_end, estop_y, 15.5, estop_y, C_RAIL, LW_PW)
+    label(ax, 15.5, estop_y, "+24VDC\nRAIL", C_RAIL, 11, 'left', 'center', True)
+
+    # -V output → 0V rail
+    ov_y = 7.0
+    wire(ax, psu_r, ov_y, 15.5, ov_y, C_RAIL0, LW_PW)
+    label(ax, psu_r + 0.1, ov_y + 0.15, "\u2212V", C_RAIL0, 9, 'left', 'bottom', True)
+    label(ax, 15.5, ov_y, "0V RAIL\n(GND)", C_RAIL0, 11, 'left', 'center', True)
+
+    # Neutral wire
+    n_y = chain_y - 0.6
+    wire(ax, 2.5, n_y, 7.5, n_y, '#1565C0', LW_PW)
+    dot(ax, 2.5, n_y, '#1565C0', 8)
+    label(ax, 2.3, n_y + 0.15, "N", '#1565C0', 10, 'right', 'bottom', True)
+
+    # Earth wire
+    d3 = new_drawing(ax, unit=1.5, fontsize=10)
+    e_y = chain_y - 1.2
+    wire(ax, 2.5, e_y, 5.0, e_y, C_DKGREEN, LW_PW)
+    dot(ax, 2.5, e_y, C_DKGREEN, 8)
+    label(ax, 2.3, e_y + 0.15, "PE", C_DKGREEN, 10, 'right', 'bottom', True)
+    d3 += elm.Ground().at((5.5, e_y)).color(C_DKGREEN)
+    label(ax, 5.8, e_y - 0.3, "Enclosure\nbonding stud", C_DKGREEN, 9,
+          'left', 'center')
+
+    # Earth to DIN rail
+    d3 += elm.Ground().at((7.5, e_y)).color(C_DKGREEN)
+    wire(ax, 5.5, e_y, 7.5, e_y, C_DKGREEN, LW_PW)
+    label(ax, 7.8, e_y - 0.3, "DIN rail", C_DKGREEN, 9, 'left', 'center')
+
+    finish_drawing(d3, ax)
+
+    # ─── EARTH BONDING & SAFETY NOTES (lower section) ───
+    block(ax, 0.5, 0.5, 15.5, 5.0,
           "EARTH BONDING & SAFETY NOTES", '#E8F5E9', C_DKGREEN, 15)
 
-    # Left column: earth bonding
     label(ax, 0.8, 4.7,
           "EARTH BONDING PATH:", C_DKGREEN, 13, 'left', 'center', True)
     label(ax, 0.8, 4.2,
@@ -1009,7 +1069,6 @@ def page_mains_psu(pdf):
           "All metal parts of enclosure must be bonded to protective earth",
           C_LGREY, 9, 'left', 'center')
 
-    # Left column: safety notes
     label(ax, 0.8, 3.1,
           "SAFETY REQUIREMENTS:", C_DKRED, 13, 'left', 'center', True)
     notes = [
@@ -1026,7 +1085,6 @@ def page_mains_psu(pdf):
         label(ax, 0.8, 2.65 - i * 0.35, f"\u2022 {note}",
               col, 10, 'left', 'center', bld)
 
-    # Right column: wire colours and power chain
     label(ax, 9.5, 4.7,
           "MAINS WIRE COLOURS (UK):", '#424242', 13, 'left', 'center', True)
     for i, (lbl, c) in enumerate([
@@ -1065,13 +1123,13 @@ def main():
         page_mains_psu(pdf)
 
     print(f"PDF saved: {OUT}")
-    print(f"  6 pages, A3 landscape")
-    print(f"  Page 1: Power path - individual K3A/K3B/K3C + FORM1")
-    print(f"  Page 2: Relay drive circuit - ESP32 -> ULN2003 -> coils + interlock")
-    print(f"  Page 3: Feedback optocouplers (PC817 4-pin, pin connections)")
-    print(f"  Page 4: Status LEDs (with resistor calcs) & E-stop")
+    print(f"  6 pages, A3 landscape, schemdraw circuit symbols")
+    print(f"  Page 1: Power path - switch symbols for K3A/K3B/K3C + K1/KSP")
+    print(f"  Page 2: Relay drive - ESP32/ULN2003A ICs, coil symbols, interlock")
+    print(f"  Page 3: Feedback - PC817 optocoupler symbols with resistors")
+    print(f"  Page 4: LEDs & E-stop - LED/resistor/ground + button circuits")
     print(f"  Page 5: GPIO pinout, serial commands, BOM")
-    print(f"  Page 6: Mains input, 24V PSU, HW E-stop, earth bonding")
+    print(f"  Page 6: Mains input - fuse, breaker, PSU, E-stop, earth symbols")
 
 
 if __name__ == "__main__":
